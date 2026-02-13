@@ -1,20 +1,66 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# DevAsign Mobile App
 
-# Run and deploy your AI Studio app
+DevAsign Mobile App is a modern, mobile-first web application designed for developers to discover opportunities, manage tasks, and track earnings on the go. Built with React and TypeScript, it provides a seamless experience for navigating the DevAsign ecosystem.
 
-This contains everything you need to run your app locally.
+## Features
 
-View your app in AI Studio: https://ai.studio/apps/drive/1pRrKpdMmFLP54wiC2i_qi6hT4W1KobYn
+- **Task Explorer**: Browse available bounties and development tasks.
+- **Task Management**: Track your active and completed tasks in one place.
+- **Bounty Details**: View detailed information about bounties, including requirements and rewards.
+- **Submission System**: Submit your work directly through the app and view submission status.
+- **Wallet & Earnings**: Monitor your earnings, view transaction history, and manage your wallet.
+- **In-App Messaging**: Communicate with task creators and other developers.
+- **Notifications**: Stay updated with real-time alerts for task updates and messages.
+- **User Profile**: manageable profile and settings.
 
-## Run Locally
+## Tech Stack
 
-**Prerequisites:**  Node.js
+- **Framework**: [React](https://react.dev/)
+- **Build Tool**: [Vite](https://vitejs.dev/)
+- **Language**: [TypeScript](https://www.typescriptlang.org/)
+- **Routing**: [React Router](https://reactrouter.com/)
+- **Styling**: Vanilla CSS with a custom design system
+- **Icons**: [Lucide React](https://lucide.dev/)
+- **Charts**: [Recharts](https://recharts.org/)
 
+## Getting Started
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+Follow these steps to set up and run the project locally.
+
+### Prerequisites
+
+- Node.js (v18 or higher recommended)
+- npm or yarn
+
+### Installation
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/bishopBethel/devasign-mobile-app.git
+   cd devasign-mobile-app
+   ```
+
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+### Running the App
+
+Start the development server:
+
+```bash
+npm run dev
+```
+
+The application will be available at `http://localhost:5173` (or the port shown in your terminal).
+
+## Building for Production
+
+To build the application for production:
+
+```bash
+npm run build
+```
+
+This will generate the optimized files in the `dist` directory.
