@@ -77,7 +77,8 @@ Follow these steps to set up and run the project locally.
 #### Prerequisites
 
 - Node.js (v18 or higher recommended)
-- npm or yarn
+- npm or pnpm
+- Docker and Docker Compose (for local database and redis)
 
 #### Installation
 
@@ -89,7 +90,12 @@ Follow these steps to set up and run the project locally.
 
 2. Install dependencies:
    ```bash
-   npm install
+   pnpm install
+   ```
+
+3. Set up the development environment (Postgres & Redis):
+   ```bash
+   docker compose up -d
    ```
 
 #### Running the App
