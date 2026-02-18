@@ -22,7 +22,7 @@ export const users = pgTable('users', {
 
 export const bounties = pgTable('bounties', {
     id: uuid('id').primaryKey().defaultRandom(),
-    githubIssueId: integer('github_issue_id'),
+    githubIssueId: bigint('github_issue_id', { mode: 'number' }),
     repoOwner: text('repo_owner').notNull(),
     repoName: text('repo_name').notNull(),
     title: text('title').notNull(),

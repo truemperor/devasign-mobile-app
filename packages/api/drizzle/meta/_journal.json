@@ -19,22 +19,8 @@
     {
       "idx": 2,
       "version": "7",
-      "when": 1771432840620,
-      "tag": "0002_sharp_hawkeye",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1771433650176,
-      "tag": "0003_add_bounties_trigger",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1771434030173,
-      "tag": "0004_complex_jackpot",
+      "when": 1771434355792,
+      "tag": "0002_create_bounties_atomic",
       "breakpoints": true
     }
   ]

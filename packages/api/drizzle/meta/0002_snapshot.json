@@ -1,5 +1,5 @@
 {
-  "id": "eac79c64-4fd4-4c17-9c11-f181b6b8073e",
+  "id": "4fd0aec1-54ff-471d-91fa-40a96c840634",
   "prevId": "7c5aa78f-ff50-4b5b-a55b-62d39b15fd2f",
   "version": "7",
   "dialect": "postgresql",
@@ -17,7 +17,7 @@
         },
         "github_issue_id": {
           "name": "github_issue_id",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": false
         },
@@ -107,7 +107,68 @@
           "default": "now()"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "bounties_creator_id_idx": {
+          "name": "bounties_creator_id_idx",
+          "columns": [
+            {
+              "expression": "creator_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "bounties_assignee_id_idx": {
+          "name": "bounties_assignee_id_idx",
+          "columns": [
+            {
+              "expression": "assignee_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "bounties_status_idx": {
+          "name": "bounties_status_idx",
+          "columns": [
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "bounties_github_issue_id_key": {
+          "name": "bounties_github_issue_id_key",
+          "columns": [
+            {
+              "expression": "github_issue_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {
         "bounties_creator_id_users_id_fk": {
           "name": "bounties_creator_id_users_id_fk",
@@ -132,7 +193,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
+          "onDelete": "set null",
           "onUpdate": "no action"
         }
       },
