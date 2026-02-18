@@ -8,6 +8,13 @@
       "when": 1771420206290,
       "tag": "0000_chief_monster_badoon",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1771421249863,
+      "tag": "0001_abnormal_inertia",
+      "breakpoints": true
     }
   ]
 }
