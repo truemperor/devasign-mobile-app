@@ -2,9 +2,9 @@
 <div align="center">
   <a href="https://www.devasign.com?ref=github" style="display: block; margin: 0 auto;">
     <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="./public/devasign-white.png">
-      <source media="(prefers-color-scheme: light)" srcset="./public/devasign-black.png">
-      <img alt="DevAsign Logo" src="./public/devasign-white.png" height="80" style="display: block; margin: 0 auto;">
+      <source media="(prefers-color-scheme: dark)" srcset="./packages/mobile/public/devasign-white.png">
+      <source media="(prefers-color-scheme: light)" srcset="./packages/mobile/public/devasign-black.png">
+      <img alt="DevAsign Logo" src="./packages/mobile/public/devasign-white.png" height="80" style="display: block; margin: 0 auto;">
     </picture>
   </a>
 <br/>
@@ -77,7 +77,8 @@ Follow these steps to set up and run the project locally.
 #### Prerequisites
 
 - Node.js (v18 or higher recommended)
-- npm or yarn
+- npm or pnpm
+- Docker and Docker Compose (for local database and redis)
 
 #### Installation
 
@@ -89,8 +90,26 @@ Follow these steps to set up and run the project locally.
 
 2. Install dependencies:
    ```bash
-   npm install
+   pnpm install
    ```
+
+3. Set up the development environment (Postgres & Redis):
+   ```bash
+   docker compose up -d
+   ```
+
+To stop the development environment:
+   ```bash
+   docker compose down
+   ```
+
+#### Environment Configuration
+
+This project uses `.env` files for configuration. Create the following files based on their examples:
+- **Root `.env`**: For Docker variables like `POSTGRES_USER`, `POSTGRES_PASSWORD`, etc.
+- **`packages/api/.env`**: For API-specific variables like `GEMINI_API_KEY` and `POSTGRES_*` credentials.
+
+The API automatically composes `DATABASE_URL` from the individual `POSTGRES_*` variables at startup, so you only need to define your credentials once. You can also set `DATABASE_URL` directly to override this behavior.
 
 #### Running the App
 
