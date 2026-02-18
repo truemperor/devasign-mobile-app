@@ -105,14 +105,13 @@ To stop the development environment:
 
 #### Environment Configuration
 
-This project uses `.env` files for configuration. Copy the example files and fill in your values:
+This project uses a single `.env` file at the root for configuration. Copy the example file and fill in your values:
 
 ```bash
 cp .env.example .env
-cp packages/api/.env.example packages/api/.env
 ```
 
-The `.env.example` files document all available variables, organized into the following groups:
+The `.env.example` file documents all available variables, organized into the following groups:
 
 | Group | Variables | Required |
 |---|---|---|
@@ -120,7 +119,7 @@ The `.env.example` files document all available variables, organized into the fo
 | **Database** | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `POSTGRES_HOST`, `POSTGRES_PORT` | Yes |
 | **Redis** | `REDIS_URL` | No |
 | **GitHub OAuth** | `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `GITHUB_CALLBACK_URL` | No |
-| **JWT** | `JWT_SECRET`, `JWT_EXPIRES_IN` | No |
+| **JWT** | `JWT_SECRET`, `JWT_EXPIRES_IN` | Yes* |
 | **Stellar** | `STELLAR_NETWORK`, `STELLAR_HORIZON_URL`, `STELLAR_ISSUER_SECRET` | No |
 | **Gemini AI** | `GEMINI_API_KEY` | Yes |
 

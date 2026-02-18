@@ -8,9 +8,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // Default NODE_ENV to 'development' if not set
-if (!process.env.NODE_ENV) {
-    process.env.NODE_ENV = 'development';
-}
+process.env.NODE_ENV ??= 'development';
 
 // Compose DATABASE_URL from individual POSTGRES_* variables if not explicitly set.
 // This allows credentials to be defined in a single place (e.g., the root .env file).
@@ -35,12 +33,17 @@ if (!process.env.GEMINI_API_KEY) {
     process.exit(1);
 }
 
+if (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'change-me-to-a-random-64-char-string') {
+    console.error('FATAL ERROR: JWT_SECRET is not defined or is set to the default placeholder.');
+    process.exit(1);
+}
+
 // Warn about optional but recommended environment variables
 const optionalVars = [
     { name: 'REDIS_URL', group: 'Redis' },
     { name: 'GITHUB_CLIENT_ID', group: 'GitHub OAuth' },
     { name: 'GITHUB_CLIENT_SECRET', group: 'GitHub OAuth' },
-    { name: 'JWT_SECRET', group: 'JWT Authentication' },
+    { name: 'GITHUB_CLIENT_ID', group: 'GitHub OAuth' },
     { name: 'STELLAR_NETWORK', group: 'Stellar' },
     { name: 'STELLAR_HORIZON_URL', group: 'Stellar' },
 ];
