@@ -3,7 +3,10 @@
     "compilerOptions": {
         "outDir": "./dist",
         "noEmit": false,
-        "allowImportingTsExtensions": false
+        "allowImportingTsExtensions": false,
+        "types": [
+            "vitest/globals"
+        ]
     },
     "include": [
         "src"
