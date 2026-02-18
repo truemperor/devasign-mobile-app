@@ -15,6 +15,13 @@
       "when": 1771422860652,
       "tag": "0001_wonderful_shotgun",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1771434355792,
+      "tag": "0002_create_bounties_atomic",
+      "breakpoints": true
     }
   ]
 }
