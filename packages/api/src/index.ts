@@ -28,8 +28,8 @@ if (!process.env.DATABASE_URL) {
 }
 
 // Validate required environment variables
-if (!process.env.GEMINI_API_KEY) {
-    console.error('FATAL ERROR: GEMINI_API_KEY is not defined in the environment.');
+if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY === 'YOUR_GEMINI_API_KEY_HERE') {
+    console.error('FATAL ERROR: GEMINI_API_KEY is not defined or is set to the default placeholder.');
     process.exit(1);
 }
 
@@ -43,9 +43,10 @@ const optionalVars = [
     { name: 'REDIS_URL', group: 'Redis' },
     { name: 'GITHUB_CLIENT_ID', group: 'GitHub OAuth' },
     { name: 'GITHUB_CLIENT_SECRET', group: 'GitHub OAuth' },
-    { name: 'GITHUB_CLIENT_ID', group: 'GitHub OAuth' },
+    { name: 'GITHUB_CALLBACK_URL', group: 'GitHub OAuth' },
     { name: 'STELLAR_NETWORK', group: 'Stellar' },
     { name: 'STELLAR_HORIZON_URL', group: 'Stellar' },
+    { name: 'STELLAR_ISSUER_SECRET', group: 'Stellar' },
 ];
 
 const missingOptional = optionalVars.filter(v => !process.env[v.name]);
