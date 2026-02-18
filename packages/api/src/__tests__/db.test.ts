@@ -16,8 +16,9 @@ describe('Database Connectivity', () => {
         try {
             const result = await db.execute(sql`SELECT 1 as connected`);
             expect(result).toBeDefined();
-            // result should be truthy on success
-            expect(result).toBeTruthy();
+            // Verify specific query result content
+            const rows = result.rows as { connected: number }[];
+            expect(rows[0].connected).toBe(1);
         } catch (error) {
             console.error('Database connection failed:', error);
             throw error;

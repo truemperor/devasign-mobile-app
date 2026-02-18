@@ -5,15 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1771420206290,
-      "tag": "0000_chief_monster_badoon",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1771421249863,
-      "tag": "0001_abnormal_inertia",
+      "when": 1771421757058,
+      "tag": "0000_perfect_talos",
       "breakpoints": true
     }
   ]
