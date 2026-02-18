@@ -7,5 +7,5 @@ export const users = pgTable('users', {
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at')
         .notNull()
-        .defaultNow(),
+        .defaultNow(), // Note: DB trigger `update_users_updated_at` handles updates
 });
