@@ -19,6 +19,11 @@ if (!process.env.DATABASE_URL) {
     }
 }
 
+if (!process.env.DATABASE_URL) {
+    console.error('FATAL ERROR: DATABASE_URL is not defined and could not be composed from POSTGRES_* variables.');
+    process.exit(1);
+}
+
 // Validate environment variables
 if (!process.env.GEMINI_API_KEY) {
     console.error('FATAL ERROR: GEMINI_API_KEY is not defined in the environment.');
