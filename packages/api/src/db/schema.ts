@@ -146,7 +146,7 @@ export const extensionRequests = pgTable('extension_requests', {
 
 export const transactions = pgTable('transactions', {
     id: uuid('id').primaryKey().defaultRandom(),
-    userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+    userId: uuid('user_id').references(() => users.id, { onDelete: 'restrict' }).notNull(),
     type: transactionTypeEnum('type').notNull(),
     amountUsdc: decimal('amount_usdc', { precision: 20, scale: 7 }).notNull(),
     bountyId: uuid('bounty_id').references(() => bounties.id, { onDelete: 'set null' }),
