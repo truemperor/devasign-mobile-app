@@ -50,7 +50,7 @@ describe('Messages Table Schema', () => {
         const index = config.indexes.find(i => i.config.name === 'messages_bounty_id_created_at_idx');
 
         expect(index).toBeDefined();
-        // Drizzle index config stores columns as an array of expressions or strings
-        // In recent versions, it's often access via index.config.columns
+        const indexColumns = index!.config.columns.map(c => (c as any).name || (c as any).expression);
+        expect(indexColumns).toEqual(['bounty_id', 'created_at']);
     });
 });

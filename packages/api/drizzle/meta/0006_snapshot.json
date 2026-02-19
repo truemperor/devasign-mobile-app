@@ -1,5 +1,5 @@
 {
-  "id": "8e581242-f11e-4f07-a096-0c08e209ef74",
+  "id": "e46e8a35-c70e-4697-b1e5-4d30b346f9c8",
   "prevId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
   "version": "7",
   "dialect": "postgresql",
@@ -519,7 +519,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
+          "onDelete": "no action",
           "onUpdate": "no action"
         },
         "messages_recipient_id_users_id_fk": {
@@ -532,14 +532,19 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
+          "onDelete": "no action",
           "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "messages_sender_not_recipient": {
+          "name": "messages_sender_not_recipient",
+          "value": "\"sender_id\" <> \"recipient_id\""
+        }
+      },
       "isRLSEnabled": false
     },
     "public.submissions": {

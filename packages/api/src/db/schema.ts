@@ -1,4 +1,6 @@
-import { pgTable, text, timestamp, varchar, bigint, jsonb, decimal, integer, uuid, pgEnum, index, uniqueIndex } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, varchar, bigint, jsonb, decimal, integer, uuid, pgEnum, index, uniqueIndex, check } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
+
 
 export const difficultyEnum = pgEnum('difficulty', ['beginner', 'intermediate', 'advanced']);
 export const statusEnum = pgEnum('status', ['open', 'assigned', 'in_review', 'completed', 'cancelled']);
@@ -107,14 +109,20 @@ export const disputes = pgTable('disputes', {
 export const messages = pgTable('messages', {
     id: uuid('id').primaryKey().defaultRandom(),
     bountyId: uuid('bounty_id').references(() => bounties.id, { onDelete: 'cascade' }).notNull(),
-    senderId: uuid('sender_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
-    recipientId: uuid('recipient_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+    senderId: uuid('sender_id').references(() => users.id, { onDelete: 'no action' }).notNull(),
+    recipientId: uuid('recipient_id').references(() => users.id, { onDelete: 'no action' }).notNull(),
+    // SECURITY: Stored XSS vector.
+    // The content of a message is user-provided and will be rendered in the client.
+    // It MUST be sanitized on the backend before being inserted into the database
+    // to prevent malicious scripts from being stored and executed on other users' browsers.
+    // Use a library like 'dompurify' for sanitization.
     content: text('content').notNull(),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     readAt: timestamp('read_at'),
 }, (table) => {
     return {
         bountyCreatedAtIdx: index('messages_bounty_id_created_at_idx').on(table.bountyId, table.createdAt),
+        senderNotRecipient: check('messages_sender_not_recipient', sql`"sender_id" <> "recipient_id"`),
     };
 });
 
