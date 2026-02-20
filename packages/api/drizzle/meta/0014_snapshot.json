@@ -1,5 +1,5 @@
 {
-  "id": "64111084-82e2-4650-b038-d6a8077aa125",
+  "id": "63ba54c2-ee8c-4692-8f37-f1b1ec9ea349",
   "prevId": "f188f0ce-3865-4657-9d61-0dcb691d54e8",
   "version": "7",
   "dialect": "postgresql",
@@ -293,15 +293,15 @@
           "name": "bounties_tech_tags_gin_idx",
           "columns": [
             {
-              "expression": "\"tech_tags\" USING gin",
+              "expression": "tech_tags",
+              "isExpression": false,
               "asc": true,
-              "isExpression": true,
               "nulls": "last"
             }
           ],
           "isUnique": false,
           "concurrently": false,
-          "method": "btree",
+          "method": "gin",
           "with": {}
         },
         "bounties_github_issue_id_key": {

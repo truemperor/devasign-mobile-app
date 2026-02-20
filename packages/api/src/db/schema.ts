@@ -52,7 +52,7 @@ export const bounties = pgTable('bounties', {
         assigneeIdx: index('bounties_assignee_id_idx').on(table.assigneeId),
         statusIdx: index('bounties_status_idx').on(table.status),
         statusDeadlineIdx: index('bounties_status_deadline_idx').on(table.status, table.deadline),
-        techTagsGinIdx: index('bounties_tech_tags_gin_idx').on(sql`${table.techTags} USING gin`),
+        techTagsGinIdx: index('bounties_tech_tags_gin_idx').using('gin', table.techTags),
         githubIssueIdKey: uniqueIndex('bounties_github_issue_id_key').on(table.githubIssueId),
     };
 });
