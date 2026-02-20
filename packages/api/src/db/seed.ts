@@ -42,15 +42,16 @@ async function seed() {
 
         // 3. Generate Bounties
         console.log(`  Generating ${NUM_BOUNTIES} bounties...`);
-        const statuses = ['open', 'assigned', 'in_review', 'completed', 'cancelled'] as const;
-        const difficulties = ['beginner', 'intermediate', 'advanced'] as const;
 
         const bountyBatch = Array.from({ length: NUM_BOUNTIES }).map(() => {
             const creator = faker.helpers.arrayElement(seededUsers);
-            const status = faker.helpers.arrayElement(statuses);
+            const status = faker.helpers.arrayElement(schema.statusEnum.enumValues);
             let assigneeId = null;
             if (status !== 'open' && status !== 'cancelled') {
-                assigneeId = faker.helpers.arrayElement(seededUsers.filter(u => u.id !== creator.id)).id;
+                const potentialAssignees = seededUsers.filter(u => u.id !== creator.id);
+                if (potentialAssignees.length > 0) {
+                    assigneeId = faker.helpers.arrayElement(potentialAssignees).id;
+                }
             }
 
             return {
@@ -61,7 +62,7 @@ async function seed() {
                 description: faker.lorem.paragraphs(2),
                 amountUsdc: Math.round((Math.random() * 2000 + 100) * 100) / 100,
                 techTags: faker.helpers.arrayElements(['TypeScript', 'React', 'Rust', 'Go', 'Next.js'], { min: 1, max: 3 }),
-                difficulty: faker.helpers.arrayElement(difficulties),
+                difficulty: faker.helpers.arrayElement(schema.difficultyEnum.enumValues),
                 status: status,
                 creatorId: creator.id,
                 assigneeId: assigneeId,
@@ -72,7 +73,7 @@ async function seed() {
 
         // 4. Generate Applications
         console.log('  Generating applications...');
-        const applicationBatch = [];
+        const applicationBatch: (typeof schema.applications.$inferInsert)[] = [];
         for (const bounty of seededBounties) {
             if (bounty.status === 'open' || bounty.status === 'assigned') {
                 const numApps = faker.number.int({ min: 1, max: 5 });
@@ -80,10 +81,10 @@ async function seed() {
                 const applicants = faker.helpers.arrayElements(potentialApplicants, numApps);
 
                 for (const applicant of applicants) {
-                    const appStatus = bounty.assigneeId === applicant.id ? 'accepted' : faker.helpers.arrayElement(['pending', 'rejected'] as const);
+                    const appStatus = bounty.assigneeId === applicant.id ? 'accepted' : faker.helpers.arrayElement(schema.applicationStatusEnum.enumValues);
                     applicationBatch.push({
-                        bountyId: bounty.id,
-                        applicantId: applicant.id,
+                        bountyId: bounty.id as string,
+                        applicantId: applicant.id as string,
                         coverLetter: faker.lorem.paragraph(),
                         estimatedTime: faker.number.int({ min: 2, max: 14 }),
                         experienceLinks: [faker.internet.url(), faker.internet.url()],
@@ -96,14 +97,14 @@ async function seed() {
 
         // 5. Generate Submissions
         console.log('  Generating submissions...');
-        const submissionBatch = [];
+        const submissionBatch: (typeof schema.submissions.$inferInsert)[] = [];
         for (const bounty of seededBounties) {
             if ((bounty.status === 'in_review' || bounty.status === 'completed') && bounty.assigneeId) {
                 const subStatus = bounty.status === 'completed' ? 'approved' : 'pending';
                 submissionBatch.push({
-                    bountyId: bounty.id,
-                    developerId: bounty.assigneeId,
-                    prUrl: `https://github.com/${bounty.repoOwner}/${bounty.repoName}/pull/${faker.number.int({ min: 1, max: 1000 })}`,
+                    bountyId: bounty.id as string,
+                    developerId: bounty.assigneeId as string,
+                    prUrl: `https://github.com/${bounty.repoOwner as string}/${bounty.repoName as string}/pull/${faker.number.int({ min: 1, max: 1000 })}`,
                     status: subStatus,
                     notes: faker.lorem.sentence(),
                 });
@@ -115,7 +116,7 @@ async function seed() {
 
         // 6. Generate Messages
         console.log('  Generating messages...');
-        const messageBatch = [];
+        const messageBatch: (typeof schema.messages.$inferInsert)[] = [];
         for (const bounty of seededBounties) {
             const participants = [bounty.creatorId];
             if (bounty.assigneeId) participants.push(bounty.assigneeId);
@@ -127,9 +128,9 @@ async function seed() {
                     const recipientId = participants.find(p => p !== senderId);
                     if (recipientId) {
                         messageBatch.push({
-                            bountyId: bounty.id,
-                            senderId,
-                            recipientId,
+                            bountyId: bounty.id as string,
+                            senderId: senderId as string,
+                            recipientId: recipientId as string,
                             content: faker.lorem.sentence(),
                         });
                     }
@@ -142,14 +143,14 @@ async function seed() {
 
         // 7. Generate Transactions
         console.log('  Generating transactions...');
-        const transactionBatch = [];
+        const transactionBatch: (typeof schema.transactions.$inferInsert)[] = [];
         for (const bounty of seededBounties) {
             // Funding transaction for every bounty
             transactionBatch.push({
-                userId: bounty.creatorId,
+                userId: bounty.creatorId as string,
                 type: 'bounty_funding' as const,
-                amountUsdc: bounty.amountUsdc,
-                bountyId: bounty.id,
+                amountUsdc: bounty.amountUsdc as string,
+                bountyId: bounty.id as string,
                 stellarTxHash: faker.string.hexadecimal({ length: 64, prefix: '' }),
                 status: 'completed' as const,
             });
@@ -157,10 +158,10 @@ async function seed() {
             // Payout for completed bounties
             if (bounty.status === 'completed' && bounty.assigneeId) {
                 transactionBatch.push({
-                    userId: bounty.assigneeId,
+                    userId: bounty.assigneeId as string,
                     type: 'bounty_payout' as const,
-                    amountUsdc: bounty.amountUsdc,
-                    bountyId: bounty.id,
+                    amountUsdc: bounty.amountUsdc as string,
+                    bountyId: bounty.id as string,
                     stellarTxHash: faker.string.hexadecimal({ length: 64, prefix: '' }),
                     status: 'completed' as const,
                 });
