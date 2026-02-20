@@ -1,24 +1,18 @@
-import { db } from './index';
+import { drizzle } from 'drizzle-orm/neon-http';
+import { neon } from '@neondatabase/serverless';
+import { getDatabaseUrl } from './config';
 import * as schema from './schema';
-import * as dotenv from 'dotenv';
-import path from 'path';
-
-// Load environment variables from the root .env file
-dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 
 async function seed() {
     console.log('⏳ Seeding database...');
 
     try {
+        const db = drizzle(neon(getDatabaseUrl()), { schema });
+
         // Add your seeding logic here
-        // Example:
-        // await db.insert(schema.users).values({
-        //     githubId: 12345,
-        //     username: 'testuser',
-        //     email: 'test@example.com',
-        // });
 
         console.log('✅ Seeding completed');
+        process.exit(0);
     } catch (error) {
         console.error('❌ Seeding failed');
         console.error(error);
