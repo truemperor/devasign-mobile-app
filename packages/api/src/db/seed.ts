@@ -35,7 +35,7 @@ async function seed() {
             email: faker.internet.email(),
             techStack: faker.helpers.arrayElements(['TypeScript', 'React', 'Node.js', 'Rust', 'Go', 'Stellar', 'Solidity', 'Python'], { min: 2, max: 5 }),
             walletAddress: `G${faker.string.alphanumeric(55).toUpperCase()}`,
-            totalEarned: Math.round(Math.random() * 5000 * 100) / 100,
+            totalEarned: String(Math.round(Math.random() * 5000 * 100) / 100),
             bountiesCompleted: faker.number.int({ min: 0, max: 20 }),
         }));
         const seededUsers = await db.insert(schema.users).values(userBatch).returning();
@@ -60,7 +60,7 @@ async function seed() {
                 repoName: faker.helpers.arrayElement(['monorepo', 'core-api', 'sdk-js', 'stellar-wallet']),
                 title: faker.lorem.sentence({ min: 3, max: 8 }),
                 description: faker.lorem.paragraphs(2),
-                amountUsdc: Math.round((Math.random() * 2000 + 100) * 100) / 100,
+                amountUsdc: String(Math.round((Math.random() * 2000 + 100) * 100) / 100),
                 techTags: faker.helpers.arrayElements(['TypeScript', 'React', 'Rust', 'Go', 'Next.js'], { min: 1, max: 3 }),
                 difficulty: faker.helpers.arrayElement(schema.difficultyEnum.enumValues),
                 status: status,
@@ -81,7 +81,8 @@ async function seed() {
                 const applicants = faker.helpers.arrayElements(potentialApplicants, numApps);
 
                 for (const applicant of applicants) {
-                    const appStatus = bounty.assigneeId === applicant.id ? 'accepted' : faker.helpers.arrayElement(schema.applicationStatusEnum.enumValues);
+                    const possibleStatuses = schema.applicationStatusEnum.enumValues.filter(s => s !== 'accepted');
+                    const appStatus = bounty.assigneeId === applicant.id ? 'accepted' : faker.helpers.arrayElement(possibleStatuses);
                     applicationBatch.push({
                         bountyId: bounty.id as string,
                         applicantId: applicant.id as string,
@@ -149,7 +150,7 @@ async function seed() {
             transactionBatch.push({
                 userId: bounty.creatorId as string,
                 type: 'bounty_funding' as const,
-                amountUsdc: bounty.amountUsdc as string,
+                amountUsdc: String(bounty.amountUsdc),
                 bountyId: bounty.id as string,
                 stellarTxHash: faker.string.hexadecimal({ length: 64, prefix: '' }),
                 status: 'completed' as const,
@@ -160,7 +161,7 @@ async function seed() {
                 transactionBatch.push({
                     userId: bounty.assigneeId as string,
                     type: 'bounty_payout' as const,
-                    amountUsdc: bounty.amountUsdc as string,
+                    amountUsdc: String(bounty.amountUsdc),
                     bountyId: bounty.id as string,
                     stellarTxHash: faker.string.hexadecimal({ length: 64, prefix: '' }),
                     status: 'completed' as const,
