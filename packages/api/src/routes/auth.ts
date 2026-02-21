@@ -8,7 +8,12 @@ import { v4 as uuidv4 } from 'uuid';
 
 const auth = new Hono();
 
-// Auth state for CSRF protection (simplified for now, ideally stored in session/cookie)
+// SECURITY: This hardcoded state is insecure and must be replaced.
+// TODO: Implement a dynamic state generation and validation mechanism using user sessions/cookies.
+// For example, in the '/github' route:
+// const state = uuidv4();
+// c.cookie('oauth_state', state, { httpOnly: true, secure: true, sameSite: 'Lax' });
+// Then, in the '/github/callback' route, compare c.req.query('state') with the value from c.req.cookie('oauth_state').
 const OAUTH_STATE = 'random_state_string';
 
 /**
@@ -78,7 +83,11 @@ auth.get('/github/callback', async (c) => {
         }
 
         // 4. Generate JWT token
-        const secret = process.env.JWT_SECRET || 'change-me';
+        const secret = process.env.JWT_SECRET;
+        if (!secret) {
+            console.error('FATAL: JWT_SECRET environment variable is not set.');
+            return c.json({ error: 'Internal server configuration error' }, 500);
+        }
         const payload = {
             sub: user!.id,
             username: user!.username,
@@ -99,7 +108,7 @@ auth.get('/github/callback', async (c) => {
 
     } catch (error: any) {
         console.error('OAuth Callback Error:', error);
-        return c.json({ error: 'Authentication failed', message: error.message }, 500);
+        return c.json({ error: 'Authentication failed' }, 500);
     }
 });
 

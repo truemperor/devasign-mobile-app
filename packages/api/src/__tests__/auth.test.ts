@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createApp } from '../app';
 import { githubService } from '../services/github';
 import { db } from '../db';
-import { users } from '../db/schema';
 
 // Mock dependencies
 vi.mock('../services/github', () => ({
@@ -92,6 +91,41 @@ describe('Authentication Flow', () => {
             const body = await res.json();
             expect(body.user.username).toBe('testuser');
             expect(body.token).toBeDefined();
+        });
+
+        it('should return 500 with generic message on internal error', async () => {
+            (githubService.getAccessToken as any).mockRejectedValue(new Error('GitHub API Error'));
+
+            const res = await app.request('/auth/github/callback?code=abc&state=random_state_string');
+
+            expect(res.status).toBe(500);
+            const body = await res.json();
+            expect(body.error).toBe('Authentication failed');
+            expect(body.message).toBeUndefined(); // Should be sanitized
+        });
+
+        it('should return 500 if JWT_SECRET is missing', async () => {
+            const originalSecret = process.env.JWT_SECRET;
+            delete process.env.JWT_SECRET;
+
+            const mockGithubUser = {
+                id: 12345,
+                login: 'testuser',
+                email: 'test@example.com',
+                avatar_url: 'https://avatar.url',
+            };
+
+            (githubService.getAccessToken as any).mockResolvedValue('fake-access-token');
+            (githubService.getUserProfile as any).mockResolvedValue(mockGithubUser);
+            (db.query.users.findFirst as any).mockResolvedValue({ id: '1' });
+
+            const res = await app.request('/auth/github/callback?code=abc&state=random_state_string');
+
+            expect(res.status).toBe(500);
+            const body = await res.json();
+            expect(body.error).toBe('Internal server configuration error');
+
+            process.env.JWT_SECRET = originalSecret;
         });
     });
 });
