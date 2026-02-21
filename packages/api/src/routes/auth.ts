@@ -75,6 +75,14 @@ auth.get('/github/callback', async (c) => {
                     updatedAt: new Date(),
                 })
                 .where(eq(users.id, user.id));
+
+            // Re-fetch the user to get the updated details
+            user = await db.query.users.findFirst({
+                where: eq(users.id, user.id),
+            });
+            if (!user) {
+                throw new Error('Failed to retrieve updated user.');
+            }
         } else {
             // Create new user
             const newUser = {
