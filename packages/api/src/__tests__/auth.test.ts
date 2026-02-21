@@ -1,0 +1,97 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { createApp } from '../app';
+import { githubService } from '../services/github';
+import { db } from '../db';
+import { users } from '../db/schema';
+
+// Mock dependencies
+vi.mock('../services/github', () => ({
+    githubService: {
+        getAuthorizationUrl: vi.fn(),
+        getAccessToken: vi.fn(),
+        getUserProfile: vi.fn(),
+    },
+}));
+
+vi.mock('../db', () => ({
+    db: {
+        query: {
+            users: {
+                findFirst: vi.fn(),
+            },
+        },
+        update: vi.fn(() => ({
+            set: vi.fn(() => ({
+                where: vi.fn(),
+            })),
+        })),
+        insert: vi.fn(() => ({
+            values: vi.fn(),
+        })),
+    },
+}));
+
+describe('Authentication Flow', () => {
+    let app: any;
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+        app = createApp();
+    });
+
+    describe('GET /auth/github', () => {
+        it('should redirect to GitHub authorization URL', async () => {
+            const mockUrl = 'https://github.com/login/oauth/authorize?client_id=123';
+            (githubService.getAuthorizationUrl as any).mockReturnValue(mockUrl);
+
+            const res = await app.request('/auth/github');
+
+            expect(res.status).toBe(302);
+            expect(res.headers.get('Location')).toBe(mockUrl);
+        });
+    });
+
+    describe('GET /auth/github/callback', () => {
+        it('should return 400 if code is missing', async () => {
+            const res = await app.request('/auth/github/callback?state=random_state_string');
+            expect(res.status).toBe(400);
+            const body = await res.json();
+            expect(body.error).toBe('Authorization code missing');
+        });
+
+        it('should return 400 if state is invalid', async () => {
+            const res = await app.request('/auth/github/callback?code=abc&state=wrong_state');
+            expect(res.status).toBe(400);
+            const body = await res.json();
+            expect(body.error).toBe('Invalid state');
+        });
+
+        it('should successfully authenticate and return user + token', async () => {
+            const mockGithubUser = {
+                id: 12345,
+                login: 'testuser',
+                email: 'test@example.com',
+                avatar_url: 'https://avatar.url',
+            };
+
+            const mockDbUser = {
+                id: 'uuid-123',
+                githubId: BigInt(12345),
+                username: 'testuser',
+                email: 'test@example.com',
+                avatarUrl: 'https://avatar.url',
+            };
+
+            (githubService.getAccessToken as any).mockResolvedValue('fake-access-token');
+            (githubService.getUserProfile as any).mockResolvedValue(mockGithubUser);
+            (db.query.users.findFirst as any).mockResolvedValue(mockDbUser);
+
+            const res = await app.request('/auth/github/callback?code=abc&state=random_state_string');
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.user.username).toBe('testuser');
+            expect(body.token).toBeDefined();
+        });
+    });
+});
