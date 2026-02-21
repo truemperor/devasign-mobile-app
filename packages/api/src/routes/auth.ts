@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { sign } from 'hono/jwt';
+import { setCookie, getCookie, deleteCookie } from 'hono/cookie';
 import { githubService } from '../services/github';
 import { db } from '../db';
 import { users } from '../db/schema';
@@ -8,20 +9,23 @@ import { v4 as uuidv4 } from 'uuid';
 
 const auth = new Hono();
 
-// SECURITY: This hardcoded state is insecure and must be replaced.
-// TODO: Implement a dynamic state generation and validation mechanism using user sessions/cookies.
-// For example, in the '/github' route:
-// const state = uuidv4();
-// c.cookie('oauth_state', state, { httpOnly: true, secure: true, sameSite: 'Lax' });
-// Then, in the '/github/callback' route, compare c.req.query('state') with the value from c.req.cookie('oauth_state').
-const OAUTH_STATE = 'random_state_string';
+// SECURITY: Use a dynamic state via cookies for CSRF protection.
 
 /**
  * GET /auth/github
  * Redirects to GitHub for authentication
  */
 auth.get('/github', (c) => {
-    const url = githubService.getAuthorizationUrl(OAUTH_STATE);
+    const state = uuidv4();
+    // Set a secure, http-only cookie with the state
+    setCookie(c, 'oauth_state', state, {
+        path: '/',
+        secure: process.env.NODE_ENV === 'production',
+        httpOnly: true,
+        maxAge: 600, // 10 minutes
+        sameSite: 'Lax',
+    });
+    const url = githubService.getAuthorizationUrl(state);
     return c.redirect(url);
 });
 
@@ -32,12 +36,16 @@ auth.get('/github', (c) => {
 auth.get('/github/callback', async (c) => {
     const code = c.req.query('code');
     const state = c.req.query('state');
+    const storedState = getCookie(c, 'oauth_state');
+
+    // Clear the cookie immediately after reading it
+    deleteCookie(c, 'oauth_state');
 
     if (!code) {
         return c.json({ error: 'Authorization code missing' }, 400);
     }
 
-    if (state !== OAUTH_STATE) {
+    if (!state || state !== storedState) {
         return c.json({ error: 'Invalid state' }, 400);
     }
 
@@ -79,7 +87,13 @@ auth.get('/github/callback', async (c) => {
                 bountiesCompleted: 0,
             };
             await db.insert(users).values(newUser);
-            user = newUser as any; // Cast to match expected type
+            // Re-fetch to get the full user object with correct types (handling bigint/uuid correctly)
+            user = await db.query.users.findFirst({
+                where: eq(users.id, newUser.id),
+            });
+            if (!user) {
+                throw new Error('Failed to retrieve newly created user.');
+            }
         }
 
         // 4. Generate JWT token

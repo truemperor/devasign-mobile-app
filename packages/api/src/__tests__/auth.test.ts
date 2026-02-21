@@ -52,14 +52,22 @@ describe('Authentication Flow', () => {
 
     describe('GET /auth/github/callback', () => {
         it('should return 400 if code is missing', async () => {
-            const res = await app.request('/auth/github/callback?state=random_state_string');
+            const res = await app.request('/auth/github/callback?state=random_state', {
+                headers: {
+                    Cookie: 'oauth_state=random_state',
+                },
+            });
             expect(res.status).toBe(400);
             const body = await res.json();
             expect(body.error).toBe('Authorization code missing');
         });
 
-        it('should return 400 if state is invalid', async () => {
-            const res = await app.request('/auth/github/callback?code=abc&state=wrong_state');
+        it('should return 400 if state is invalid or missing from cookie', async () => {
+            const res = await app.request('/auth/github/callback?code=abc&state=wrong_state', {
+                headers: {
+                    Cookie: 'oauth_state=correct_state',
+                },
+            });
             expect(res.status).toBe(400);
             const body = await res.json();
             expect(body.error).toBe('Invalid state');
@@ -83,20 +91,33 @@ describe('Authentication Flow', () => {
 
             (githubService.getAccessToken as any).mockResolvedValue('fake-access-token');
             (githubService.getUserProfile as any).mockResolvedValue(mockGithubUser);
-            (db.query.users.findFirst as any).mockResolvedValue(mockDbUser);
+            (db.query.users.findFirst as any)
+                .mockResolvedValueOnce(null) // First call: user not found
+                .mockResolvedValueOnce(mockDbUser); // Second call: re-fetch after insert
 
-            const res = await app.request('/auth/github/callback?code=abc&state=random_state_string');
+            const res = await app.request('/auth/github/callback?code=abc&state=random_state', {
+                headers: {
+                    Cookie: 'oauth_state=random_state',
+                },
+            });
 
             expect(res.status).toBe(200);
             const body = await res.json();
             expect(body.user.username).toBe('testuser');
             expect(body.token).toBeDefined();
+
+            // Verify re-fetch was called
+            expect(db.query.users.findFirst).toHaveBeenCalledTimes(2);
         });
 
         it('should return 500 with generic message on internal error', async () => {
             (githubService.getAccessToken as any).mockRejectedValue(new Error('GitHub API Error'));
 
-            const res = await app.request('/auth/github/callback?code=abc&state=random_state_string');
+            const res = await app.request('/auth/github/callback?code=abc&state=random_state', {
+                headers: {
+                    Cookie: 'oauth_state=random_state',
+                },
+            });
 
             expect(res.status).toBe(500);
             const body = await res.json();
@@ -119,7 +140,11 @@ describe('Authentication Flow', () => {
             (githubService.getUserProfile as any).mockResolvedValue(mockGithubUser);
             (db.query.users.findFirst as any).mockResolvedValue({ id: '1' });
 
-            const res = await app.request('/auth/github/callback?code=abc&state=random_state_string');
+            const res = await app.request('/auth/github/callback?code=abc&state=random_state', {
+                headers: {
+                    Cookie: 'oauth_state=random_state',
+                },
+            });
 
             expect(res.status).toBe(500);
             const body = await res.json();
