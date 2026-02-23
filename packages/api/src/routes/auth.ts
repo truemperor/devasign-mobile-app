@@ -7,6 +7,20 @@ import { users, refreshTokens } from '../db/schema';
 import { eq } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
+
+const hashToken = (token: string) => {
+    return crypto.createHash('sha256').update(token).digest('hex');
+};
+
+const getFormattedPrivateKey = () => {
+    const privateKey = process.env.JWT_PRIVATE_KEY;
+    if (!privateKey) {
+        console.error('FATAL: JWT_PRIVATE_KEY environment variable is not set.');
+        return null;
+    }
+    return privateKey.replace(/\\n/g, '\n');
+};
+
 const auth = new Hono();
 
 // SECURITY: Use a dynamic state via cookies for CSRF protection.
@@ -105,14 +119,10 @@ auth.get('/github/callback', async (c) => {
         }
 
         // 4. Generate JWT access token
-        const privateKey = process.env.JWT_PRIVATE_KEY;
-        if (!privateKey) {
-            console.error('FATAL: JWT_PRIVATE_KEY environment variable is not set.');
+        const formattedPrivateKey = getFormattedPrivateKey();
+        if (!formattedPrivateKey) {
             return c.json({ error: 'Internal server configuration error' }, 500);
         }
-
-        // Remove literal \n escape characters if they were parsed as string literals
-        const formattedPrivateKey = privateKey.replace(/\\n/g, '\n');
 
         const payload = {
             sub: user!.id,
@@ -129,7 +139,7 @@ auth.get('/github/callback', async (c) => {
         await db.insert(refreshTokens).values({
             id: uuidv4(),
             userId: user!.id,
-            token: refreshTokenValue,
+            token: hashToken(refreshTokenValue),
             expiresAt,
         });
 
@@ -145,7 +155,7 @@ auth.get('/github/callback', async (c) => {
             refreshToken: refreshTokenValue,
         });
 
-    } catch (error) {
+    } catch (error: unknown) {
         console.error('OAuth Callback Error:', error);
         return c.json({ error: 'Authentication failed' }, 500);
     }
@@ -164,9 +174,10 @@ auth.post('/refresh', async (c) => {
             return c.json({ error: 'Refresh token is required' }, 400);
         }
 
-        // 1. Validate refresh token in database
+        // 1. Validate refresh token in database (using hash)
+        const hashedToken = hashToken(refreshToken);
         const storedToken = await db.query.refreshTokens.findFirst({
-            where: eq(refreshTokens.token, refreshToken),
+            where: eq(refreshTokens.token, hashedToken),
         });
 
         if (!storedToken) {
@@ -189,13 +200,10 @@ auth.post('/refresh', async (c) => {
         }
 
         // 3. Generate new access token
-        const privateKey = process.env.JWT_PRIVATE_KEY;
-        if (!privateKey) {
-            console.error('FATAL: JWT_PRIVATE_KEY environment variable is not set.');
+        const formattedPrivateKey = getFormattedPrivateKey();
+        if (!formattedPrivateKey) {
             return c.json({ error: 'Internal server configuration error' }, 500);
         }
-
-        const formattedPrivateKey = privateKey.replace(/\\n/g, '\n');
 
         const payload = {
             sub: user.id,
@@ -216,7 +224,7 @@ auth.post('/refresh', async (c) => {
             await tx.insert(refreshTokens).values({
                 id: uuidv4(),
                 userId: user.id,
-                token: newRefreshTokenValue,
+                token: hashToken(newRefreshTokenValue),
                 expiresAt: newExpiresAt,
             });
         });
@@ -226,7 +234,7 @@ auth.post('/refresh', async (c) => {
             token: newAccessToken,
             refreshToken: newRefreshTokenValue,
         });
-    } catch (error) {
+    } catch (error: unknown) {
         console.error('Refresh Token Error:', error);
         return c.json({ error: 'Failed to refresh token' }, 500);
     }
@@ -246,10 +254,11 @@ auth.post('/logout', async (c) => {
         }
 
         // Delete the refresh token from the database
-        await db.delete(refreshTokens).where(eq(refreshTokens.token, refreshToken));
+        const hashedToken = hashToken(refreshToken);
+        await db.delete(refreshTokens).where(eq(refreshTokens.token, hashedToken));
 
         return c.json({ success: true, message: 'Logged out successfully' });
-    } catch (error) {
+    } catch (error: unknown) {
         console.error('Logout Error:', error);
         return c.json({ error: 'Failed to logout' }, 500);
     }
