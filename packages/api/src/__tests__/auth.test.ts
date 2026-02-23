@@ -134,6 +134,53 @@ describe('Authentication Flow', () => {
             expect(db.insert).toHaveBeenCalledTimes(2); // Once for user, once for refresh token
         });
 
+        it('should successfully authenticate, update existing user, and re-fetch profile', async () => {
+            const mockGithubUser = {
+                id: 12345,
+                login: 'updateduser',
+                email: 'updated@example.com',
+                avatar_url: 'https://updated.avatar.url',
+            };
+
+            const mockDbUserPreUpdate = {
+                id: 'uuid-123',
+                githubId: BigInt(12345),
+                username: 'olduser',
+                email: 'old@example.com',
+                avatarUrl: 'https://old.avatar.url',
+            };
+
+            const mockDbUserPostUpdate = {
+                ...mockDbUserPreUpdate,
+                username: 'updateduser',
+                email: 'updated@example.com',
+                avatarUrl: 'https://updated.avatar.url',
+            };
+
+            (githubService.getAccessToken as any).mockResolvedValue('fake-access-token');
+            (githubService.getUserProfile as any).mockResolvedValue(mockGithubUser);
+            (db.query.users.findFirst as any)
+                .mockResolvedValueOnce(mockDbUserPreUpdate) // First call: existing user found
+                .mockResolvedValueOnce(mockDbUserPostUpdate); // Second call: re-fetch after update
+
+            const res = await app.request('/auth/github/callback?code=abc&state=random_state', {
+                headers: {
+                    Cookie: 'oauth_state=random_state',
+                },
+            });
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.user.username).toBe('updateduser');
+            expect(body.user.email).toBe('updated@example.com');
+            expect(body.token).toBeDefined();
+            expect(body.refreshToken).toBeDefined();
+
+            // Verify db calls
+            expect(db.query.users.findFirst).toHaveBeenCalledTimes(2);
+            expect(db.update).toHaveBeenCalled();
+        });
+
         it('should return 500 with generic message on internal error', async () => {
             (githubService.getAccessToken as any).mockRejectedValue(new Error('GitHub API Error'));
 

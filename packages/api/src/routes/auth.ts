@@ -21,6 +21,20 @@ const getFormattedPrivateKey = () => {
     return privateKey.replace(/\\n/g, '\n');
 };
 
+async function generateAccessToken(user: { id: string; username: string | null }) {
+    const formattedPrivateKey = getFormattedPrivateKey();
+    if (!formattedPrivateKey) {
+        throw new Error('Internal server configuration error');
+    }
+
+    const payload = {
+        sub: user.id,
+        username: user.username,
+        exp: Math.floor(Date.now() / 1000) + (60 * 15), // 15 minutes
+    };
+    return sign(payload, formattedPrivateKey, 'RS256');
+}
+
 const auth = new Hono();
 
 // SECURITY: Use a dynamic state via cookies for CSRF protection.
@@ -119,17 +133,13 @@ auth.get('/github/callback', async (c) => {
         }
 
         // 4. Generate JWT access token
-        const formattedPrivateKey = getFormattedPrivateKey();
-        if (!formattedPrivateKey) {
+        let token: string;
+        try {
+            token = await generateAccessToken(user!);
+        } catch (error) {
+            console.error('Access token generation failed:', error);
             return c.json({ error: 'Internal server configuration error' }, 500);
         }
-
-        const payload = {
-            sub: user!.id,
-            username: user!.username,
-            exp: Math.floor(Date.now() / 1000) + (60 * 15), // 15 minutes
-        };
-        const token = await sign(payload, formattedPrivateKey, 'RS256');
 
         // 5. Generate Refresh token
         const refreshTokenValue = crypto.randomBytes(64).toString('hex');
@@ -200,17 +210,13 @@ auth.post('/refresh', async (c) => {
         }
 
         // 3. Generate new access token
-        const formattedPrivateKey = getFormattedPrivateKey();
-        if (!formattedPrivateKey) {
+        let newAccessToken: string;
+        try {
+            newAccessToken = await generateAccessToken(user);
+        } catch (error) {
+            console.error('Access token generation failed:', error);
             return c.json({ error: 'Internal server configuration error' }, 500);
         }
-
-        const payload = {
-            sub: user.id,
-            username: user.username,
-            exp: Math.floor(Date.now() / 1000) + (60 * 15), // 15 minutes
-        };
-        const newAccessToken = await sign(payload, formattedPrivateKey, 'RS256');
 
         // 4. Generate new refresh token (rotation) and delete the old one
         const newRefreshTokenValue = crypto.randomBytes(64).toString('hex');
