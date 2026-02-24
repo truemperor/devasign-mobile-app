@@ -24,7 +24,7 @@ describe('Resource Authorization Helpers', () => {
 
     describe('isBountyCreator', () => {
         it('should return true if user is the creator and build the correct query', async () => {
-            (db.where as any).mockImplementation(() => ({
+            (db as any).where.mockImplementation(() => ({
                 limit: vi.fn().mockResolvedValueOnce([{ id: resourceId }])
             }));
 
@@ -32,14 +32,16 @@ describe('Resource Authorization Helpers', () => {
 
             expect(result).toBe(true);
             // Assert that the where clause was called with the correct logic
-            expect(db.where).toHaveBeenCalledWith(
-                eq(bounties.id, resourceId),
-                eq(bounties.creatorId, userId)
+            expect((db as any).where).toHaveBeenCalledWith(
+                and(
+                    eq(bounties.id, resourceId),
+                    eq(bounties.creatorId, userId)
+                )
             );
         });
 
         it('should return false if user is not the creator', async () => {
-            (db.where as any).mockImplementation(() => ({
+            (db as any).where.mockImplementation(() => ({
                 limit: vi.fn().mockResolvedValueOnce([])
             }));
             const result = await isBountyCreator(userId, resourceId);
@@ -49,21 +51,23 @@ describe('Resource Authorization Helpers', () => {
 
     describe('isBountyAssignee', () => {
         it('should return true if user is the assignee and build the correct query', async () => {
-            (db.where as any).mockImplementation(() => ({
+            (db as any).where.mockImplementation(() => ({
                 limit: vi.fn().mockResolvedValueOnce([{ id: resourceId }])
             }));
 
             const result = await isBountyAssignee(userId, resourceId);
 
             expect(result).toBe(true);
-            expect(db.where).toHaveBeenCalledWith(
-                eq(bounties.id, resourceId),
-                eq(bounties.assigneeId, userId)
+            expect((db as any).where).toHaveBeenCalledWith(
+                and(
+                    eq(bounties.id, resourceId),
+                    eq(bounties.assigneeId, userId)
+                )
             );
         });
 
         it('should return false if user is not the assignee', async () => {
-            (db.where as any).mockImplementation(() => ({
+            (db as any).where.mockImplementation(() => ({
                 limit: vi.fn().mockResolvedValueOnce([])
             }));
             const result = await isBountyAssignee(userId, resourceId);
@@ -73,21 +77,23 @@ describe('Resource Authorization Helpers', () => {
 
     describe('isApplicationOwner', () => {
         it('should return true if user is the applicant and build the correct query', async () => {
-            (db.where as any).mockImplementation(() => ({
+            (db as any).where.mockImplementation(() => ({
                 limit: vi.fn().mockResolvedValueOnce([{ id: resourceId }])
             }));
 
             const result = await isApplicationOwner(userId, resourceId);
 
             expect(result).toBe(true);
-            expect(db.where).toHaveBeenCalledWith(
-                eq(applications.id, resourceId),
-                eq(applications.applicantId, userId)
+            expect((db as any).where).toHaveBeenCalledWith(
+                and(
+                    eq(applications.id, resourceId),
+                    eq(applications.applicantId, userId)
+                )
             );
         });
 
         it('should return false if user is not the applicant', async () => {
-            (db.where as any).mockImplementation(() => ({
+            (db as any).where.mockImplementation(() => ({
                 limit: vi.fn().mockResolvedValueOnce([])
             }));
             const result = await isApplicationOwner(userId, resourceId);
@@ -97,21 +103,23 @@ describe('Resource Authorization Helpers', () => {
 
     describe('isSubmissionOwner', () => {
         it('should return true if user is the developer of the submission and build the correct query', async () => {
-            (db.where as any).mockImplementation(() => ({
+            (db as any).where.mockImplementation(() => ({
                 limit: vi.fn().mockResolvedValueOnce([{ id: resourceId }])
             }));
 
             const result = await isSubmissionOwner(userId, resourceId);
 
             expect(result).toBe(true);
-            expect(db.where).toHaveBeenCalledWith(
-                eq(submissions.id, resourceId),
-                eq(submissions.developerId, userId)
+            expect((db as any).where).toHaveBeenCalledWith(
+                and(
+                    eq(submissions.id, resourceId),
+                    eq(submissions.developerId, userId)
+                )
             );
         });
 
         it('should return false if user is not the developer of the submission', async () => {
-            (db.where as any).mockImplementation(() => ({
+            (db as any).where.mockImplementation(() => ({
                 limit: vi.fn().mockResolvedValueOnce([])
             }));
             const result = await isSubmissionOwner(userId, resourceId);
@@ -121,21 +129,23 @@ describe('Resource Authorization Helpers', () => {
 
     describe('isExtensionRequestOwner', () => {
         it('should return true if user is the developer of the extension request and build the correct query', async () => {
-            (db.where as any).mockImplementation(() => ({
+            (db as any).where.mockImplementation(() => ({
                 limit: vi.fn().mockResolvedValueOnce([{ id: resourceId }])
             }));
 
             const result = await isExtensionRequestOwner(userId, resourceId);
 
             expect(result).toBe(true);
-            expect(db.where).toHaveBeenCalledWith(
-                eq(extensionRequests.id, resourceId),
-                eq(extensionRequests.developerId, userId)
+            expect((db as any).where).toHaveBeenCalledWith(
+                and(
+                    eq(extensionRequests.id, resourceId),
+                    eq(extensionRequests.developerId, userId)
+                )
             );
         });
 
         it('should return false if user is not the developer of the extension request', async () => {
-            (db.where as any).mockImplementation(() => ({
+            (db as any).where.mockImplementation(() => ({
                 limit: vi.fn().mockResolvedValueOnce([])
             }));
             const result = await isExtensionRequestOwner(userId, resourceId);
@@ -145,24 +155,26 @@ describe('Resource Authorization Helpers', () => {
 
     describe('isBountyParticipant', () => {
         it('should return true if user is a participant (creator or assignee) and build the correct query', async () => {
-            (db.where as any).mockImplementation(() => ({
+            (db as any).where.mockImplementation(() => ({
                 limit: vi.fn().mockResolvedValueOnce([{ id: resourceId }])
             }));
 
             const result = await isBountyParticipant(userId, resourceId);
 
             expect(result).toBe(true);
-            expect(db.where).toHaveBeenCalledWith(
-                eq(bounties.id, resourceId),
-                or(
-                    eq(bounties.creatorId, userId),
-                    eq(bounties.assigneeId, userId)
+            expect((db as any).where).toHaveBeenCalledWith(
+                and(
+                    eq(bounties.id, resourceId),
+                    or(
+                        eq(bounties.creatorId, userId),
+                        eq(bounties.assigneeId, userId)
+                    )
                 )
             );
         });
 
         it('should return false if user is not a participant', async () => {
-            (db.where as any).mockImplementation(() => ({
+            (db as any).where.mockImplementation(() => ({
                 limit: vi.fn().mockResolvedValueOnce([])
             }));
             const result = await isBountyParticipant(userId, resourceId);

@@ -1,4 +1,4 @@
-import { eq, or } from 'drizzle-orm';
+import { eq, and, or } from 'drizzle-orm';
 import { db } from '../db';
 import { bounties, applications, submissions, extensionRequests } from '../db/schema';
 import { Context, Next } from 'hono';
@@ -12,8 +12,10 @@ export async function isBountyCreator(userId: string, bountyId: string): Promise
         .select({ id: bounties.id })
         .from(bounties)
         .where(
-            eq(bounties.id, bountyId),
-            eq(bounties.creatorId, userId)
+            and(
+                eq(bounties.id, bountyId),
+                eq(bounties.creatorId, userId)
+            )
         )
         .limit(1);
 
@@ -28,8 +30,10 @@ export async function isBountyAssignee(userId: string, bountyId: string): Promis
         .select({ id: bounties.id })
         .from(bounties)
         .where(
-            eq(bounties.id, bountyId),
-            eq(bounties.assigneeId, userId)
+            and(
+                eq(bounties.id, bountyId),
+                eq(bounties.assigneeId, userId)
+            )
         )
         .limit(1);
 
@@ -44,8 +48,10 @@ export async function isApplicationOwner(userId: string, applicationId: string):
         .select({ id: applications.id })
         .from(applications)
         .where(
-            eq(applications.id, applicationId),
-            eq(applications.applicantId, userId)
+            and(
+                eq(applications.id, applicationId),
+                eq(applications.applicantId, userId)
+            )
         )
         .limit(1);
 
@@ -60,8 +66,10 @@ export async function isSubmissionOwner(userId: string, submissionId: string): P
         .select({ id: submissions.id })
         .from(submissions)
         .where(
-            eq(submissions.id, submissionId),
-            eq(submissions.developerId, userId)
+            and(
+                eq(submissions.id, submissionId),
+                eq(submissions.developerId, userId)
+            )
         )
         .limit(1);
 
@@ -76,8 +84,10 @@ export async function isExtensionRequestOwner(userId: string, extensionRequestId
         .select({ id: extensionRequests.id })
         .from(extensionRequests)
         .where(
-            eq(extensionRequests.id, extensionRequestId),
-            eq(extensionRequests.developerId, userId)
+            and(
+                eq(extensionRequests.id, extensionRequestId),
+                eq(extensionRequests.developerId, userId)
+            )
         )
         .limit(1);
 
@@ -93,10 +103,12 @@ export async function isBountyParticipant(userId: string, bountyId: string): Pro
         .select({ id: bounties.id })
         .from(bounties)
         .where(
-            eq(bounties.id, bountyId),
-            or(
-                eq(bounties.creatorId, userId),
-                eq(bounties.assigneeId, userId)
+            and(
+                eq(bounties.id, bountyId),
+                or(
+                    eq(bounties.creatorId, userId),
+                    eq(bounties.assigneeId, userId)
+                )
             )
         )
         .limit(1);
