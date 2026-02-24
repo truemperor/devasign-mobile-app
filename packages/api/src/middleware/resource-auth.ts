@@ -142,3 +142,6 @@ export const ensureApplicationOwner = (paramName: string = 'id') =>
 
 export const ensureSubmissionOwner = (paramName: string = 'id') =>
     createResourceAuthMiddleware(isSubmissionOwner, paramName, 'Forbidden: You must be the submission owner');
+
+export const ensureExtensionRequestOwner = (paramName: string = 'id') =>
+    createResourceAuthMiddleware(isExtensionRequestOwner, paramName, 'Forbidden: You must be the extension request owner');
