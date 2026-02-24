@@ -1,4 +1,4 @@
-import { eq, and, or } from 'drizzle-orm';
+import { eq, or } from 'drizzle-orm';
 import { db } from '../db';
 import { bounties, applications, submissions, extensionRequests } from '../db/schema';
 import { Context, Next } from 'hono';
@@ -12,10 +12,8 @@ export async function isBountyCreator(userId: string, bountyId: string): Promise
         .select({ id: bounties.id })
         .from(bounties)
         .where(
-            and(
-                eq(bounties.id, bountyId),
-                eq(bounties.creatorId, userId)
-            )
+            eq(bounties.id, bountyId),
+            eq(bounties.creatorId, userId)
         )
         .limit(1);
 
@@ -30,10 +28,8 @@ export async function isBountyAssignee(userId: string, bountyId: string): Promis
         .select({ id: bounties.id })
         .from(bounties)
         .where(
-            and(
-                eq(bounties.id, bountyId),
-                eq(bounties.assigneeId, userId)
-            )
+            eq(bounties.id, bountyId),
+            eq(bounties.assigneeId, userId)
         )
         .limit(1);
 
@@ -48,10 +44,8 @@ export async function isApplicationOwner(userId: string, applicationId: string):
         .select({ id: applications.id })
         .from(applications)
         .where(
-            and(
-                eq(applications.id, applicationId),
-                eq(applications.applicantId, userId)
-            )
+            eq(applications.id, applicationId),
+            eq(applications.applicantId, userId)
         )
         .limit(1);
 
@@ -66,10 +60,8 @@ export async function isSubmissionOwner(userId: string, submissionId: string): P
         .select({ id: submissions.id })
         .from(submissions)
         .where(
-            and(
-                eq(submissions.id, submissionId),
-                eq(submissions.developerId, userId)
-            )
+            eq(submissions.id, submissionId),
+            eq(submissions.developerId, userId)
         )
         .limit(1);
 
@@ -84,10 +76,8 @@ export async function isExtensionRequestOwner(userId: string, extensionRequestId
         .select({ id: extensionRequests.id })
         .from(extensionRequests)
         .where(
-            and(
-                eq(extensionRequests.id, extensionRequestId),
-                eq(extensionRequests.developerId, userId)
-            )
+            eq(extensionRequests.id, extensionRequestId),
+            eq(extensionRequests.developerId, userId)
         )
         .limit(1);
 
@@ -103,12 +93,10 @@ export async function isBountyParticipant(userId: string, bountyId: string): Pro
         .select({ id: bounties.id })
         .from(bounties)
         .where(
-            and(
-                eq(bounties.id, bountyId),
-                or(
-                    eq(bounties.creatorId, userId),
-                    eq(bounties.assigneeId, userId)
-                )
+            eq(bounties.id, bountyId),
+            or(
+                eq(bounties.creatorId, userId),
+                eq(bounties.assigneeId, userId)
             )
         )
         .limit(1);
@@ -121,7 +109,14 @@ export async function isBountyParticipant(userId: string, bountyId: string): Pro
  * These can be used directly in routes to enforce resource-level authorization.
  */
 
-export const ensureBountyCreator = (paramName: string = 'id') => {
+/**
+ * Private higher-order function to create resource-level authorization middleware.
+ */
+function createResourceAuthMiddleware(
+    checker: (userId: string, resourceId: string) => Promise<boolean>,
+    paramName: string,
+    errorMessage: string
+) {
     return async (c: Context<{ Variables: Variables }>, next: Next) => {
         const user = c.get('user');
         const resourceId = c.req.param(paramName);
@@ -129,54 +124,21 @@ export const ensureBountyCreator = (paramName: string = 'id') => {
         if (!user) return c.json({ error: 'Unauthorized' }, 401);
         if (!resourceId) return c.json({ error: 'Resource ID missing' }, 400);
 
-        if (!await isBountyCreator(user.id, resourceId)) {
-            return c.json({ error: 'Forbidden: You must be the bounty creator' }, 403);
+        if (!await checker(user.id, resourceId)) {
+            return c.json({ error: errorMessage }, 403);
         }
         await next();
     };
-};
+}
 
-export const ensureBountyAssignee = (paramName: string = 'id') => {
-    return async (c: Context<{ Variables: Variables }>, next: Next) => {
-        const user = c.get('user');
-        const resourceId = c.req.param(paramName);
+export const ensureBountyCreator = (paramName: string = 'id') =>
+    createResourceAuthMiddleware(isBountyCreator, paramName, 'Forbidden: You must be the bounty creator');
 
-        if (!user) return c.json({ error: 'Unauthorized' }, 401);
-        if (!resourceId) return c.json({ error: 'Resource ID missing' }, 400);
+export const ensureBountyAssignee = (paramName: string = 'id') =>
+    createResourceAuthMiddleware(isBountyAssignee, paramName, 'Forbidden: You must be the assigned developer');
 
-        if (!await isBountyAssignee(user.id, resourceId)) {
-            return c.json({ error: 'Forbidden: You must be the assigned developer' }, 403);
-        }
-        await next();
-    };
-};
+export const ensureApplicationOwner = (paramName: string = 'id') =>
+    createResourceAuthMiddleware(isApplicationOwner, paramName, 'Forbidden: You must be the application owner');
 
-export const ensureApplicationOwner = (paramName: string = 'id') => {
-    return async (c: Context<{ Variables: Variables }>, next: Next) => {
-        const user = c.get('user');
-        const resourceId = c.req.param(paramName);
-
-        if (!user) return c.json({ error: 'Unauthorized' }, 401);
-        if (!resourceId) return c.json({ error: 'Resource ID missing' }, 400);
-
-        if (!await isApplicationOwner(user.id, resourceId)) {
-            return c.json({ error: 'Forbidden: You must be the application owner' }, 403);
-        }
-        await next();
-    };
-};
-
-export const ensureSubmissionOwner = (paramName: string = 'id') => {
-    return async (c: Context<{ Variables: Variables }>, next: Next) => {
-        const user = c.get('user');
-        const resourceId = c.req.param(paramName);
-
-        if (!user) return c.json({ error: 'Unauthorized' }, 401);
-        if (!resourceId) return c.json({ error: 'Resource ID missing' }, 400);
-
-        if (!await isSubmissionOwner(user.id, resourceId)) {
-            return c.json({ error: 'Forbidden: You must be the submission owner' }, 403);
-        }
-        await next();
-    };
-};
+export const ensureSubmissionOwner = (paramName: string = 'id') =>
+    createResourceAuthMiddleware(isSubmissionOwner, paramName, 'Forbidden: You must be the submission owner');
