@@ -157,3 +157,6 @@ export const ensureSubmissionOwner = (paramName: string = 'id') =>
 
 export const ensureExtensionRequestOwner = (paramName: string = 'id') =>
     createResourceAuthMiddleware(isExtensionRequestOwner, paramName, 'Forbidden: You must be the extension request owner');
+
+export const ensureBountyParticipant = (paramName: string = 'id') =>
+    createResourceAuthMiddleware(isBountyParticipant, paramName, 'Forbidden: You must be a bounty participant');
