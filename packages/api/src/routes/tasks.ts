@@ -5,7 +5,9 @@ import { bounties, submissions, users } from '../db/schema';
 import { eq } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { z } from 'zod';
+import { zValidator } from '@hono/zod-validator';
 import { ensureBountyAssignee } from '../middleware/resource-auth';
+import { BountyNotFoundError, InvalidBountyStatusError } from '../utils/errors';
 
 const tasksRouter = new Hono<{ Variables: Variables }>();
 
@@ -88,65 +90,66 @@ tasksRouter.get('/', async (c) => {
  * Submit work for an assigned bounty.
  * Body: { pr_url: string, supporting_links?: string[], notes?: string }
  */
-tasksRouter.post('/:id/submit', ensureBountyAssignee('id'), async (c) => {
-    const user = c.get('user');
-    const id = c.req.param('id');
+tasksRouter.post(
+    '/:id/submit',
+    ensureBountyAssignee('id'),
+    zValidator('json', submitWorkSchema),
+    async (c) => {
+        const user = c.get('user');
+        const id = c.req.param('id');
+        const { pr_url, supporting_links, notes } = c.req.valid('json');
 
-    const rawBody = await c.req.json().catch(() => null);
-    const validation = submitWorkSchema.safeParse(rawBody);
+        try {
+            const result = await db.transaction(async (tx) => {
+                // 1. Verify bounty is in 'assigned' status
+                const bounty = await tx.query.bounties.findFirst({
+                    where: eq(bounties.id, id),
+                });
 
-    if (!validation.success) {
-        return c.json({ error: validation.error.flatten().fieldErrors }, 400);
-    }
+                if (!bounty) {
+                    throw new BountyNotFoundError();
+                }
 
-    const { pr_url, supporting_links, notes } = validation.data;
+                if (bounty.status !== 'assigned') {
+                    throw new InvalidBountyStatusError(`Cannot submit work for bounty with status: ${bounty.status}`);
+                }
 
-    try {
-        const result = await db.transaction(async (tx) => {
-            // 1. Verify bounty is in 'assigned' status
-            const bounty = await tx.query.bounties.findFirst({
-                where: eq(bounties.id, id),
+                // 2. Create submission
+                const [submission] = await tx.insert(submissions).values({
+                    bountyId: id,
+                    developerId: user.id,
+                    prUrl: pr_url,
+                    supportingLinks: supporting_links,
+                    notes: notes,
+                    status: 'pending',
+                }).returning();
+
+                // 3. Update bounty status to 'in_review'
+                await tx.update(bounties)
+                    .set({
+                        status: 'in_review',
+                        updatedAt: new Date(),
+                    })
+                    .where(eq(bounties.id, id));
+
+                return submission;
             });
 
-            if (!bounty) {
-                throw new Error('Bounty not found');
+            return c.json(result, 201);
+        } catch (err: any) {
+            if (err instanceof BountyNotFoundError) {
+                return c.json({ error: err.message }, 404);
             }
-
-            if (bounty.status !== 'assigned') {
-                throw new Error(`Cannot submit work for bounty with status: ${bounty.status}`);
+            if (err instanceof InvalidBountyStatusError) {
+                return c.json({ error: err.message }, 400);
             }
-
-            // 2. Create submission
-            const [submission] = await tx.insert(submissions).values({
-                bountyId: id,
-                developerId: user.id,
-                prUrl: pr_url,
-                supportingLinks: supporting_links,
-                notes: notes,
-                status: 'pending',
-            }).returning();
-
-            // 3. Update bounty status to 'in_review'
-            await tx.update(bounties)
-                .set({
-                    status: 'in_review',
-                    updatedAt: new Date(),
-                })
-                .where(eq(bounties.id, id));
-
-            return submission;
-        });
-
-        return c.json(result, 201);
-    } catch (err: any) {
-        if (err.message === 'Bounty not found') {
-            return c.json({ error: err.message }, 404);
+            // Handle PostgreSQL unique constraint violation
+            if (err.code === '23505') {
+                return c.json({ error: 'A submission for this bounty already exists.' }, 409);
+            }
+            throw err;
         }
-        if (err.message.includes('Cannot submit work')) {
-            return c.json({ error: err.message }, 400);
-        }
-        throw err;
     }
-});
+);
 
 export default tasksRouter;

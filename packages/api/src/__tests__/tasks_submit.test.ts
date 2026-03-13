@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, vi, beforeEach } from 'vitest';
 import { createApp } from '../app';
 import { verify } from 'hono/jwt';
 import { db } from '../db';
-import { bounties, submissions } from '../db/schema';
+import { BountyNotFoundError, InvalidBountyStatusError } from '../utils/errors';
 
 // Mock hono/jwt verify
 vi.mock('hono/jwt', () => ({
@@ -27,7 +27,7 @@ vi.mock('../middleware/resource-auth', async (importOriginal) => {
     const actual = await importOriginal<typeof import('../middleware/resource-auth')>();
     return {
         ...actual,
-        ensureBountyAssignee: (paramName: string) => async (c: any, next: any) => {
+        ensureBountyAssignee: (_paramName: string) => async (c: any, next: any) => {
             const user = c.get('user');
             if (!user) return c.json({ error: 'Unauthorized' }, 401);
             // Simulate success for tests unless we specifically mock it to fail
@@ -67,7 +67,40 @@ describe('POST /api/tasks/:id/submit', () => {
 
         expect(res.status).toBe(400);
         const body = await res.json();
-        expect(body.error.pr_url).toBeDefined();
+        expect(body.success).toBe(false);
+        expect(body.error).toBeDefined();
+    });
+
+    it('should return 404 if bounty is not found', async () => {
+        vi.mocked(db.transaction).mockImplementation(async (cb: any) => {
+            const txMock = {
+                query: {
+                    bounties: {
+                        findFirst: vi.fn().mockResolvedValue(null),
+                    },
+                },
+            };
+            try {
+                return await cb(txMock);
+            } catch (err) {
+                // In the real app, the route catch block handles this
+                // But since we are mocking the transaction, we need to let the error propagate to the route
+                throw err;
+            }
+        });
+
+        const res = await app.request('/api/tasks/b-nonexistent/submit', {
+            method: 'POST',
+            body: JSON.stringify({ pr_url: 'https://github.com/pr/1' }),
+            headers: {
+                Authorization: 'Bearer valid.token',
+                'Content-Type': 'application/json'
+            },
+        });
+
+        expect(res.status).toBe(404);
+        const body = await res.json();
+        expect(body.error).toBe('Bounty not found');
     });
 
     it('should return 400 if bounty status is not assigned', async () => {
