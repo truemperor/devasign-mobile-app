@@ -244,6 +244,77 @@ bountiesRouter.get('/:id', async (c) => {
 });
 
 /**
+ * POST /api/bounties/:id/apply
+ * Submit an application for a bounty. Requires authentication.
+ * Body: { cover_letter: string, estimated_time?: number, experience_links?: string[] }
+ */
+bountiesRouter.post('/:id/apply', async (c) => {
+    const user = c.get('user');
+    if (!user) {
+        return c.json({ error: 'Unauthorized' }, 401);
+    }
+
+    const id = c.req.param('id');
+
+    // Fetch the bounty
+    const bounty = await db.query.bounties.findFirst({
+        where: eq(bounties.id, id),
+    });
+
+    if (!bounty) {
+        return c.json({ error: 'Bounty not found' }, 404);
+    }
+
+    // Validate bounty is open
+    if (bounty.status !== 'open') {
+        return c.json({ error: 'Bounty is not open for applications' }, 400);
+    }
+
+    // Parse and validate body
+    let body: Record<string, unknown>;
+    try {
+        body = await c.req.json();
+    } catch {
+        return c.json({ error: 'Invalid JSON body' }, 400);
+    }
+
+    const { cover_letter, estimated_time, experience_links } = body;
+
+    if (!cover_letter || typeof cover_letter !== 'string' || cover_letter.trim() === '') {
+        return c.json({ error: 'cover_letter is required and must be a non-empty string' }, 400);
+    }
+
+    const estimatedTime = estimated_time !== undefined ? estimated_time : 0;
+    if (typeof estimatedTime !== 'number' || !Number.isInteger(estimatedTime) || estimatedTime < 0) {
+        return c.json({ error: 'estimated_time must be a non-negative integer' }, 400);
+    }
+
+    const experienceLinks = experience_links !== undefined ? experience_links : [];
+    if (!Array.isArray(experienceLinks) || experienceLinks.some((l) => typeof l !== 'string')) {
+        return c.json({ error: 'experience_links must be an array of strings' }, 400);
+    }
+
+    // Insert application
+    try {
+        const [application] = await db.insert(applications).values({
+            bountyId: id,
+            applicantId: user.id,
+            coverLetter: cover_letter.trim(),
+            estimatedTime,
+            experienceLinks,
+        }).returning();
+
+        return c.json(application, 201);
+    } catch (err: any) {
+        // Postgres unique violation: duplicate application
+        if (err?.code === '23505') {
+            return c.json({ error: 'You have already applied to this bounty' }, 409);
+        }
+        throw err;
+    }
+});
+
+/**
  * PATCH /api/bounties/:id
  * Only the creator of the bounty can update it.
  */
