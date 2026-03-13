@@ -50,26 +50,22 @@ tasksRouter.get('/', async (c) => {
         .leftJoin(submissions, eq(bounties.id, submissions.bountyId))
         .where(eq(bounties.assigneeId, user.id));
 
-    // Group by status
-    const grouped: Record<string, any[]> = {};
-    const statuses = ['assigned', 'in_review', 'completed', 'open', 'cancelled'];
-    for (const status of statuses) {
-        grouped[status] = [];
-    }
+    // Derive status groups from schema to stay in sync with enum changes
+    const initialGroups = bounties.status.enumValues.reduce((acc, status) => {
+        acc[status] = [];
+        return acc;
+    }, {} as Record<string, any[]>);
 
-    for (const row of results) {
+    const grouped = results.reduce((acc, row) => {
         const status = row.bounty.status;
         const item = {
             ...row.bounty,
             creator: row.creator,
             submission: row.submission?.id ? row.submission : null,
         };
-
-        if (!grouped[status]) {
-            grouped[status] = [];
-        }
-        grouped[status].push(item);
-    }
+        acc[status].push(item);
+        return acc;
+    }, initialGroups);
 
     return c.json({
         data: grouped,
