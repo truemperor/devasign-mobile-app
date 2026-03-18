@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { Variables } from '../middleware/auth';
 import { db } from '../db';
-import { bounties, submissions, users } from '../db/schema';
+import { bounties, submissions, users, extensionRequests } from '../db/schema';
 import { eq } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { z } from 'zod';
@@ -15,6 +15,10 @@ const submitWorkSchema = z.object({
     pr_url: z.string().url('Invalid PR URL'),
     supporting_links: z.array(z.string().url('Invalid supporting link URL')).optional().default([]),
     notes: z.string().optional(),
+});
+
+const extendDeadlineSchema = z.object({
+    new_deadline: z.coerce.date(),
 });
 
 /**
@@ -146,6 +150,63 @@ tasksRouter.post(
             // Handle PostgreSQL unique constraint violation
             if (err.code === '23505') {
                 return c.json({ error: 'A submission for this bounty already exists.' }, 409);
+            }
+            throw err;
+        }
+    }
+);
+
+/**
+ * POST /api/tasks/:id/extend
+ * Request a deadline extension for an assigned bounty.
+ * Body: { new_deadline: string | date }
+ */
+tasksRouter.post(
+    '/:id/extend',
+    ensureBountyAssignee('id'),
+    zValidator('json', extendDeadlineSchema),
+    async (c) => {
+        const user = c.get('user');
+        const id = c.req.param('id');
+        const { new_deadline } = c.req.valid('json');
+
+        try {
+            const result = await db.transaction(async (tx) => {
+                // 1. Verify bounty is in 'assigned' status
+                const bounty = await tx.query.bounties.findFirst({
+                    where: eq(bounties.id, id),
+                });
+
+                if (!bounty) {
+                    throw new BountyNotFoundError();
+                }
+
+                if (bounty.status !== 'assigned') {
+                    throw new InvalidBountyStatusError(`Cannot extend deadline for bounty with status: ${bounty.status}`);
+                }
+
+                // 2. Create extension request
+                const [extensionRequest] = await tx.insert(extensionRequests).values({
+                    bountyId: id,
+                    developerId: user.id,
+                    newDeadline: new_deadline,
+                    status: 'pending',
+                }).returning();
+
+                return extensionRequest;
+            });
+
+            return c.json(result, 201);
+        } catch (err: any) {
+            if (err instanceof BountyNotFoundError) {
+                return c.json({ error: err.message }, 404);
+            }
+            if (err instanceof InvalidBountyStatusError) {
+                return c.json({ error: err.message }, 400);
+            }
+            // Handle PostgreSQL unique constraint violation
+            if (err.code === '23505') {
+                return c.json({ error: 'An active extension request already exists for this bounty.' }, 409);
             }
             throw err;
         }
