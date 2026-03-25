@@ -15,7 +15,7 @@ const paginationSchema = z.object({
 
 const disputeSchema = z.object({
     reason: z.string().min(1, { message: 'Reason is required' }),
-    evidenceLinks: z.array(z.string().url()).optional(),
+    evidence_links: z.array(z.string().url()).optional(),
 });
 
 const idSchema = z.object({
@@ -130,7 +130,7 @@ submissionsRouter.post(
         }
 
         const { id } = c.req.valid('param');
-        const { reason, evidenceLinks } = c.req.valid('json');
+        const { reason, evidence_links } = c.req.valid('json');
 
         const result = await db.select()
             .from(submissions)
@@ -156,20 +156,29 @@ submissionsRouter.post(
         }
 
         // Use a transaction to mark the submission as disputed and record the dispute
-        const [createdDispute] = await db.transaction(async (tx) => {
-            await tx.update(submissions)
-                .set({ status: 'disputed' })
-                .where(eq(submissions.id, id));
+        try {
+            const [createdDispute] = await db.transaction(async (tx) => {
+                const updated = await tx.update(submissions)
+                    .set({ status: 'disputed' })
+                    .where(and(eq(submissions.id, id), eq(submissions.status, 'rejected')))
+                    .returning({ id: submissions.id });
 
-            return await tx.insert(disputes).values({
-                submissionId: id,
-                reason,
-                evidenceLinks,
-                status: 'open'
-            }).returning();
-        });
+                if (updated.length === 0) {
+                    tx.rollback();
+                }
 
-        return c.json({ data: createdDispute }, 201);
+                return await tx.insert(disputes).values({
+                    submissionId: id,
+                    reason,
+                    evidenceLinks: evidence_links,
+                    status: 'open'
+                }).returning();
+            });
+
+            return c.json({ data: createdDispute }, 201);
+        } catch (error) {
+            return c.json({ error: 'Failed to create dispute or submission was modified concurrently' }, 409);
+        }
     }
 );
 

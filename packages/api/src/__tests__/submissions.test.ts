@@ -294,7 +294,7 @@ describe('POST /api/submissions/:id/dispute', () => {
                 Authorization: 'Bearer valid.token',
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ evidenceLinks: ['not-a-url'] })
+            body: JSON.stringify({ evidence_links: ['not-a-url'] })
         });
 
         expect(res.status).toBe(400);
@@ -377,7 +377,8 @@ describe('POST /api/submissions/:id/dispute', () => {
             .mockReturnValueOnce({ from: mockDisputeFrom } as any);
 
         // Mock database transaction
-        const mockUpdateWhere = vi.fn().mockResolvedValue(true);
+        const mockUpdateReturning = vi.fn().mockResolvedValue([{ id: 'sub-id' }]);
+        const mockUpdateWhere = vi.fn().mockReturnValue({ returning: mockUpdateReturning });
         const mockUpdateSet = vi.fn().mockReturnValue({ where: mockUpdateWhere });
         const mockUpdate = vi.fn().mockReturnValue({ set: mockUpdateSet });
 
@@ -399,7 +400,7 @@ describe('POST /api/submissions/:id/dispute', () => {
                 Authorization: 'Bearer valid.token',
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ reason: 'Unfair rejection', evidenceLinks: ['https://example.com'] })
+            body: JSON.stringify({ reason: 'Unfair rejection', evidence_links: ['https://example.com'] })
         });
 
         expect(res.status).toBe(201);
