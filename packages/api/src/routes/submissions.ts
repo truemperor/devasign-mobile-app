@@ -13,6 +13,11 @@ const paginationSchema = z.object({
     limit: z.coerce.number().int().min(1).max(100).optional().default(10),
 });
 
+const disputeSchema = z.object({
+    reason: z.string().min(1, { message: 'Reason is required' }),
+    evidenceLinks: z.array(z.string().url()).optional(),
+});
+
 const idSchema = z.object({
     id: z.string().uuid(),
 });
@@ -107,6 +112,64 @@ submissionsRouter.get(
                 dispute: dispute || null,
             }
         });
+    }
+);
+
+/**
+ * POST /api/submissions/:id/dispute
+ * Allows developer to dispute a rejected submission with reason and evidence_links
+ */
+submissionsRouter.post(
+    '/:id/dispute',
+    zValidator('param', idSchema),
+    zValidator('json', disputeSchema),
+    async (c) => {
+        const user = c.get('user');
+        if (!user) {
+            return c.json({ error: 'Unauthorized' }, 401);
+        }
+
+        const { id } = c.req.valid('param');
+        const { reason, evidenceLinks } = c.req.valid('json');
+
+        const result = await db.select()
+            .from(submissions)
+            .where(and(eq(submissions.id, id), eq(submissions.developerId, user.id)));
+
+        if (result.length === 0) {
+            return c.json({ error: 'Submission not found' }, 404);
+        }
+
+        const submission = result[0];
+
+        if (submission.status !== 'rejected') {
+            return c.json({ error: 'Only rejected submissions can be disputed' }, 400);
+        }
+
+        // Check if a dispute already exists
+        const existingDisputes = await db.select()
+            .from(disputes)
+            .where(eq(disputes.submissionId, id));
+
+        if (existingDisputes.length > 0) {
+            return c.json({ error: 'A dispute already exists for this submission' }, 400);
+        }
+
+        // Use a transaction to mark the submission as disputed and record the dispute
+        const [createdDispute] = await db.transaction(async (tx) => {
+            await tx.update(submissions)
+                .set({ status: 'disputed' })
+                .where(eq(submissions.id, id));
+
+            return await tx.insert(disputes).values({
+                submissionId: id,
+                reason,
+                evidenceLinks,
+                status: 'open'
+            }).returning();
+        });
+
+        return c.json({ data: createdDispute }, 201);
     }
 );
 
