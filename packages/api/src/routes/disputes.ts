@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { Variables } from '../middleware/auth';
 import { db } from '../db';
 import { bounties, submissions, disputes, transactions } from '../db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
 
@@ -62,9 +62,14 @@ disputesRouter.post(
             await db.transaction(async (tx) => {
                 if (resolution === 'resolved_developer') {
                     // Update dispute status
-                    await tx.update(disputes)
+                    const updated = await tx.update(disputes)
                         .set({ status: 'resolved' })
-                        .where(eq(disputes.id, id));
+                        .where(and(eq(disputes.id, id), eq(disputes.status, 'open')))
+                        .returning({ id: disputes.id });
+
+                    if (updated.length === 0) {
+                        tx.rollback();
+                    }
 
                     // Update submission status to approved
                     await tx.update(submissions)
@@ -86,9 +91,14 @@ disputesRouter.post(
                     });
                 } else if (resolution === 'resolved_creator') {
                     // Reject developer's dispute: mark as dismissed
-                    await tx.update(disputes)
+                    const updated = await tx.update(disputes)
                         .set({ status: 'dismissed' })
-                        .where(eq(disputes.id, id));
+                        .where(and(eq(disputes.id, id), eq(disputes.status, 'open')))
+                        .returning({ id: disputes.id });
+
+                    if (updated.length === 0) {
+                        tx.rollback();
+                    }
 
                     // Reopen bounty for new assignment
                     await tx.update(bounties)

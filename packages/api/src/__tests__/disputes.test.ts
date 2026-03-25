@@ -138,7 +138,12 @@ describe('POST /api/disputes/:id/resolve', () => {
         const mockFrom = vi.fn().mockReturnValue({ innerJoin: mockInnerJoin1 });
         vi.mocked(db.select).mockReturnValue({ from: mockFrom } as any);
 
-        const mockUpdateWhere = vi.fn().mockResolvedValue([]);
+        const mockUpdateReturning = vi.fn().mockResolvedValue([{ id: 'd-1' }]);
+        const mockUpdateWhere = vi.fn().mockImplementation(() => {
+            const chainable = Promise.resolve([]);
+            (chainable as any).returning = mockUpdateReturning;
+            return chainable;
+        });
         const mockUpdateSet = vi.fn().mockReturnValue({ where: mockUpdateWhere });
         const mockUpdate = vi.fn().mockReturnValue({ set: mockUpdateSet });
 
@@ -199,7 +204,12 @@ describe('POST /api/disputes/:id/resolve', () => {
         const mockFrom = vi.fn().mockReturnValue({ innerJoin: mockInnerJoin1 });
         vi.mocked(db.select).mockReturnValue({ from: mockFrom } as any);
 
-        const mockUpdateWhere = vi.fn().mockResolvedValue([]);
+        const mockUpdateReturning = vi.fn().mockResolvedValue([{ id: 'd-1' }]);
+        const mockUpdateWhere = vi.fn().mockImplementation(() => {
+            const chainable = Promise.resolve([]);
+            (chainable as any).returning = mockUpdateReturning;
+            return chainable;
+        });
         const mockUpdateSet = vi.fn().mockReturnValue({ where: mockUpdateWhere });
         const mockUpdate = vi.fn().mockReturnValue({ set: mockUpdateSet });
 
