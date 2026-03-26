@@ -71,7 +71,7 @@ export async function provisionWallet(userId: string): Promise<string> {
     // 3. Create and fund the account from platform escrow ONLY if it doesn't exist
     try {
         const account = await stellarClient.server.loadAccount(keypair.publicKey());
-        hasTrustline = account.balances.some((b: any) => b.asset_code === 'USDC' && b.asset_issuer === usdcIssuer);
+        hasTrustline = account.balances.some((b) => 'asset_code' in b && b.asset_code === 'USDC' && b.asset_issuer === usdcIssuer);
         console.log(`[Wallet Provisioning] Account ${keypair.publicKey()} already exists on ${network}. Skipping creation.`);
     } catch (err: any) {
         if (err.response?.status === 404) {
