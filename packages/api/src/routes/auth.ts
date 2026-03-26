@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { sign } from 'hono/jwt';
 import { setCookie, getCookie, deleteCookie } from 'hono/cookie';
 import { githubService } from '../services/github';
+import { provisionWallet } from '../services/wallet';
 import { db } from '../db';
 import { users, refreshTokens } from '../db/schema';
 import { eq } from 'drizzle-orm';
@@ -135,6 +136,11 @@ auth.get('/github/callback', async (c) => {
             if (!user) {
                 throw new Error('Failed to retrieve newly created user.');
             }
+
+            // Provision Stellar wallet in background — don't block auth flow
+            provisionWallet(newUser.id).catch((err) => {
+                console.error(`[Wallet Provisioning] Failed for user ${newUser.id}:`, err);
+            });
         }
 
         // 4. Generate JWT access token
