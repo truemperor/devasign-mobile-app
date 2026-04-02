@@ -384,6 +384,14 @@ walletRouter.post('/withdraw', async (c) => {
         const isAmbiguous = !error.response || error.response?.status >= 500;
 
         if (isAmbiguous) {
+            // Ambiguous failure (e.g. timeout) - mark as pending_verification
+            await db.update(transactions)
+                .set({
+                    status: 'pending_verification',
+                    updatedAt: new Date(),
+                })
+                .where(eq(transactions.id, pendingTx.id));
+
             return c.json({
                 error: 'Withdrawal submission timed out or is unknown. It may still complete.',
                 transactionId: pendingTx.id,

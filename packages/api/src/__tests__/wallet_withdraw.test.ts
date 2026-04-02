@@ -324,6 +324,11 @@ describe('POST /api/wallet/withdraw', () => {
         expect(body.error).toContain('Withdrawal submission timed out');
         expect(body.transactionId).toBe('tx-123');
         expect(body.status).toBe('pending_verification');
+
+        // Verify DB update
+        expect(mockUpdateSet).toHaveBeenCalledWith(expect.objectContaining({
+            status: 'pending_verification'
+        }));
     });
 
     it('should return 400 and mark transaction as failed when Stellar payment fails unambiguously', async () => {
@@ -343,6 +348,11 @@ describe('POST /api/wallet/withdraw', () => {
         const body = await res.json();
         expect(body.error).toContain('Withdrawal failed');
         expect(body.transactionId).toBe('tx-123');
+
+        // Verify DB update
+        expect(mockUpdateSet).toHaveBeenCalledWith(expect.objectContaining({
+            status: 'failed'
+        }));
     });
 
     // ──────────────── SUCCESSFUL WITHDRAWAL ─────────────────────────

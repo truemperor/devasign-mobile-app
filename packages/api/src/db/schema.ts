@@ -9,7 +9,7 @@ export const submissionStatusEnum = pgEnum('submission_status', ['pending', 'app
 export const disputeStatusEnum = pgEnum('dispute_status', ['open', 'resolved', 'dismissed']);
 export const extensionRequestStatusEnum = pgEnum('extension_request_status', ['pending', 'approved', 'rejected']);
 export const transactionTypeEnum = pgEnum('transaction_type', ['bounty_funding', 'bounty_payout', 'bounty_refund', 'withdrawal']);
-export const transactionStatusEnum = pgEnum('transaction_status', ['pending', 'completed', 'failed']);
+export const transactionStatusEnum = pgEnum('transaction_status', ['pending', 'pending_verification', 'completed', 'failed']);
 
 export const users = pgTable('users', {
     id: uuid('id').primaryKey().defaultRandom(),
