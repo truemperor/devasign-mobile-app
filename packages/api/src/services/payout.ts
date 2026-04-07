@@ -131,22 +131,25 @@ export async function startPayoutSweeper() {
             });
 
             for (const tx of pendingPayouts) {
-                // If it's old enough (e.g., more than 5 minutes since creation), sweep it
-                if (Date.now() - new Date(tx.createdAt).getTime() > 5 * 60 * 1000) {
+                const lastActive = tx.updatedAt ? new Date(tx.updatedAt).getTime() : new Date(tx.createdAt).getTime();
+                
+                // If it's old enough (e.g., more than 5 minutes since last active), sweep it
+                if (Date.now() - lastActive > 5 * 60 * 1000) {
                     console.log(`[Payout Sweeper] Recovering pending payout ${tx.id}`);
                     const updated = await db.update(transactions)
-                        .set({ status: 'pending_verification' })
+                        .set({ status: 'pending_verification', updatedAt: new Date() })
                         .where(and(
                             eq(transactions.id, tx.id),
-                            or(
-                                eq(transactions.status, 'pending'),
-                                eq(transactions.status, 'pending_verification')
-                            )
+                            eq(transactions.status, tx.status),
+                            eq(transactions.updatedAt, tx.updatedAt)
                         ))
                         .returning();
                         
                     if (updated.length > 0) {
-                        await orchestratePayout(tx.id, tx.userId, String(tx.amountUsdc));
+                        // Execute asynchronously to prevent blocking the sweeper loop
+                        orchestratePayout(tx.id, tx.userId, String(tx.amountUsdc)).catch(err => {
+                            console.error(`[Payout Sweeper] Error orchestrating payout for ${tx.id}:`, err);
+                        });
                     }
                 }
             }
