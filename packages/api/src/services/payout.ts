@@ -2,7 +2,7 @@ import { Keypair } from '@stellar/stellar-sdk';
 import { StellarClient, NetworkType } from './stellar';
 import { db } from '../db';
 import { transactions, users } from '../db/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, or } from 'drizzle-orm';
 
 const MAX_RETRIES = 3;
 const INITIAL_BACKOFF_MS = 1000; // 1 second
@@ -123,7 +123,10 @@ export async function startPayoutSweeper() {
             const pendingPayouts = await db.query.transactions.findMany({
                 where: and(
                     eq(transactions.type, 'bounty_payout'),
-                    eq(transactions.status, 'pending')
+                    or(
+                        eq(transactions.status, 'pending'),
+                        eq(transactions.status, 'pending_verification')
+                    )
                 )
             });
 
@@ -135,7 +138,10 @@ export async function startPayoutSweeper() {
                         .set({ status: 'pending_verification' })
                         .where(and(
                             eq(transactions.id, tx.id),
-                            eq(transactions.status, 'pending')
+                            or(
+                                eq(transactions.status, 'pending'),
+                                eq(transactions.status, 'pending_verification')
+                            )
                         ))
                         .returning();
                         
