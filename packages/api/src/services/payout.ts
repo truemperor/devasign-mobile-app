@@ -2,7 +2,7 @@ import { Keypair } from '@stellar/stellar-sdk';
 import { StellarClient, NetworkType } from './stellar';
 import { db } from '../db';
 import { transactions, users } from '../db/schema';
-import { eq, and, or } from 'drizzle-orm';
+import { eq, and, or, isNull } from 'drizzle-orm';
 
 const MAX_RETRIES = 3;
 const INITIAL_BACKOFF_MS = 1000; // 1 second
@@ -141,7 +141,7 @@ export async function startPayoutSweeper() {
                         .where(and(
                             eq(transactions.id, tx.id),
                             eq(transactions.status, tx.status),
-                            eq(transactions.updatedAt, tx.updatedAt)
+                            tx.updatedAt ? eq(transactions.updatedAt, tx.updatedAt) : isNull(transactions.updatedAt)
                         ))
                         .returning();
                         
