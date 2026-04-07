@@ -21,7 +21,7 @@ describe('GitHubApiClient', () => {
                 ok: true,
                 status: 200,
                 headers: new Headers(),
-                json: async () => ({ id: 1, login: 'testuser' }),
+                text: async () => JSON.stringify({ id: 1, login: 'testuser' }),
             });
 
             await client.getUserProfile();
@@ -49,7 +49,7 @@ describe('GitHubApiClient', () => {
                 ok: false,
                 status: 403,
                 headers,
-                json: async () => ({ message: 'API rate limit exceeded' }),
+                text: async () => JSON.stringify({ message: 'API rate limit exceeded' }),
             });
 
             await expect(client.getUserProfile()).rejects.toThrow(GitHubRateLimitError);
@@ -64,7 +64,7 @@ describe('GitHubApiClient', () => {
                 status: 404,
                 statusText: 'Not Found',
                 headers: new Headers(),
-                json: async () => ({ message: 'Resource not found' }),
+                text: async () => JSON.stringify({ message: 'Resource not found' }),
             });
 
             await expect(client.getUserProfile()).rejects.toThrow(GitHubApiError);
@@ -81,13 +81,13 @@ describe('GitHubApiClient', () => {
                     ok: true,
                     status: 200,
                     headers: new Headers({ Link: linkHeaderPage1 }),
-                    json: async () => ([{ id: 1 }, { id: 2 }]),
+                    text: async () => JSON.stringify([{ id: 1 }, { id: 2 }]),
                 })
                 .mockResolvedValueOnce({
                     ok: true,
                     status: 200,
                     headers: new Headers(), // no next link
-                    json: async () => ([{ id: 3 }, { id: 4 }]),
+                    text: async () => JSON.stringify([{ id: 3 }, { id: 4 }]),
                 });
 
             const repos = await client.getRepositories();

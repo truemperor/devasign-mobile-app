@@ -3,7 +3,7 @@
  * Handles OAuth token exchange and fetching user profile information.
  */
 
-import { GitHubApiClient } from '../utils/githubClient';
+import { GitHubApiClient, GitHubRateLimitError, GitHubApiError } from '../utils/githubClient';
 
 export interface GitHubUser {
     id: number;
@@ -94,6 +94,9 @@ export class GitHubService {
 
             return user;
         } catch (error) {
+            if (error instanceof GitHubRateLimitError || error instanceof GitHubApiError) {
+                throw error;
+            }
             throw new Error(`Failed to fetch GitHub user profile: ${error instanceof Error ? error.message : String(error)}`);
         }
     }

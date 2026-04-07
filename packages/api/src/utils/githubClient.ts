@@ -57,7 +57,8 @@ export class GitHubApiClient {
         if (!response.ok) {
             let errorMsg = response.statusText;
             try {
-                const errData = await response.json();
+                const errText = await response.text();
+                const errData = errText ? JSON.parse(errText) : {};
                 if (errData.message) {
                     errorMsg = errData.message;
                 }
@@ -67,7 +68,8 @@ export class GitHubApiClient {
             throw new GitHubApiError(`GitHub API error: ${errorMsg}`, response.status);
         }
 
-        const responseData = await response.json() as T;
+        const text = await response.text();
+        const responseData = (text ? JSON.parse(text) : null) as T;
 
         return { data: responseData, headers: response.headers };
     }
@@ -109,8 +111,8 @@ export class GitHubApiClient {
     /**
      * Fetch user profile.
      */
-    async getUserProfile(): Promise<any> {
-        const { data } = await this.request<any>('/user');
+    async getUserProfile<T = any>(): Promise<T> {
+        const { data } = await this.request<T>('/user');
         return data;
     }
 
