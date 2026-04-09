@@ -131,6 +131,102 @@ export class GitHubService {
 
         return await response.json() as GitHubUser;
     }
+
+    /**
+     * Analyzes the user's top repositories to detect their technical stack.
+     */
+    async analyzeTechStack(accessToken: string): Promise<string[]> {
+        const client = new GitHubApiClient(accessToken);
+        
+        let repos: any[] = [];
+        try {
+            const { data } = await client.request<any[]>('/user/repos?per_page=100&sort=pushed');
+            repos = data || [];
+        } catch (error) {
+            console.error('Failed to fetch repositories for stack analysis', error);
+            return [];
+        }
+
+        // Sort repos by a combination of star count and recent activity and pick top 20
+        repos.sort((a, b) => {
+            const scoreA = (a.stargazers_count || 0) * 10 + (new Date(a.pushed_at || a.updated_at || Date.now()).getTime() / 1000000000);
+            const scoreB = (b.stargazers_count || 0) * 10 + (new Date(b.pushed_at || b.updated_at || Date.now()).getTime() / 1000000000);
+            return scoreB - scoreA;
+        });
+
+        const topRepos = repos.slice(0, 20);
+        const stackWeights: Record<string, number> = {};
+
+        const addWeight = (tech: string, weight: number) => {
+            stackWeights[tech] = (stackWeights[tech] || 0) + weight;
+        };
+
+        for (const repo of topRepos) {
+            try {
+                // We shouldn't process if user doesn't own repo or no languages, but `getLanguages` handles the owner/repo.
+                const repoOwner = repo.owner?.login;
+                const repoName = repo.name;
+                if (!repoOwner || !repoName) continue;
+
+                const [languages, pkgStr, reqStr, cargoStr] = await Promise.all([
+                    client.getLanguages(repoOwner, repoName).catch(() => null),
+                    client.getFileContent(repoOwner, repoName, 'package.json').catch(() => null),
+                    client.getFileContent(repoOwner, repoName, 'requirements.txt').catch(() => null),
+                    client.getFileContent(repoOwner, repoName, 'Cargo.toml').catch(() => null)
+                ]);
+
+                // 1. Languages
+                if (languages && typeof languages === 'object') {
+                    for (const [lang, bytes] of Object.entries(languages)) {
+                        // Normalize bytes into basic point scale (1 point per 10KB)
+                        addWeight(lang, Math.ceil((bytes as number) / 10240));
+                    }
+                }
+
+                // 2. package.json
+                if (pkgStr) {
+                    try {
+                        const pkg = JSON.parse(pkgStr);
+                        const deps = { ...(pkg.dependencies || {}), ...(pkg.devDependencies || {}) };
+                        if (deps['react']) addWeight('React', 10);
+                        if (deps['next']) addWeight('Next.js', 10);
+                        if (deps['express']) addWeight('Express', 10);
+                        if (deps['vue']) addWeight('Vue', 10);
+                        if (deps['@angular/core']) addWeight('Angular', 10);
+                        if (deps['jest']) addWeight('Jest', 5);
+                        if (deps['tailwindcss']) addWeight('Tailwind CSS', 5);
+                    } catch (e) {
+                         // silent catch for invalid JSON
+                    }
+                }
+
+                // 3. requirements.txt
+                if (reqStr) {
+                    const lcReq = reqStr.toLowerCase();
+                    if (lcReq.includes('django')) addWeight('Django', 10);
+                    if (lcReq.includes('flask')) addWeight('Flask', 10);
+                    if (lcReq.includes('fastapi')) addWeight('FastAPI', 10);
+                    if (lcReq.includes('pandas')) addWeight('Pandas', 10);
+                    if (lcReq.includes('numpy')) addWeight('NumPy', 10);
+                }
+
+                // 4. Cargo.toml
+                if (cargoStr) {
+                    if (cargoStr.includes('tokio')) addWeight('Tokio', 10);
+                    if (cargoStr.includes('actix')) addWeight('Actix', 10);
+                    if (cargoStr.includes('rocket')) addWeight('Rocket', 10);
+                }
+            } catch (err) {
+                // Silently ignore individual repo errors to continue analysis
+            }
+        }
+
+        // Sort technologies by highest weight, take top 20
+        return Object.entries(stackWeights)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 20)
+            .map(([tech]) => tech);
+    }
 }
 
 export const githubService = new GitHubService();
