@@ -152,4 +152,22 @@ export class GitHubApiClient {
         const { data } = await this.request<any>(`/repos/${owner}/${repo}/pulls/${pullNumber}`);
         return data;
     }
+
+    /**
+     * Fetch a specific file content from a repository.
+     */
+    async getFileContent(owner: string, repo: string, path: string): Promise<string | null> {
+        try {
+            const { data } = await this.request<any>(`/repos/${owner}/${repo}/contents/${path}`);
+            if (data && data.content && data.encoding === 'base64') {
+                return Buffer.from(data.content, 'base64').toString('utf-8');
+            }
+            return null;
+        } catch (error) {
+            if (error instanceof GitHubApiError && error.status === 404) {
+                return null;
+            }
+            throw error;
+        }
+    }
 }
