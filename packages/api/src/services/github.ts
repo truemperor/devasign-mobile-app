@@ -11,6 +11,7 @@ export interface GitHubUser {
     email: string | null;
     avatar_url: string;
     name: string | null;
+    public_repos: number;
 }
 
 export interface GitHubEmail {
@@ -99,6 +100,36 @@ export class GitHubService {
             }
             throw new Error(`Failed to fetch GitHub user profile: ${error instanceof Error ? error.message : String(error)}`);
         }
+    }
+
+    /**
+     * Fetches the user profile from GitHub using username.
+     */
+    async getUserProfileByUsername(username: string): Promise<GitHubUser> {
+        const headers: Record<string, string> = {
+            Accept: 'application/vnd.github.v3+json',
+            'User-Agent': 'Devasign-API',
+        };
+
+        if (process.env.GITHUB_TOKEN) {
+            headers.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
+        }
+
+        const response = await fetch(`https://api.github.com/users/${username}`, {
+            headers,
+        });
+
+        if (!response.ok) {
+            if (response.status === 404) {
+                throw new Error('GitHub user not found. If your username changed, please log in again.');
+            }
+            if (response.status === 403 && response.headers.get('x-ratelimit-remaining') === '0') {
+                throw new Error('GitHub API rate limit exceeded. Please try again later.');
+            }
+            throw new Error(`GitHub API error: ${response.statusText}`);
+        }
+
+        return await response.json() as GitHubUser;
     }
 }
 
