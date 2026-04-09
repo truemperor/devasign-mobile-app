@@ -38,6 +38,10 @@ usersRoute.post('/me/sync', async (c) => {
             .where(eq(users.id, user.id))
             .returning();
 
+        if (!updatedUser) {
+            return c.json({ error: 'User not found in database' }, 404);
+        }
+
         // Return updated attributes
         return c.json({
             success: true,
