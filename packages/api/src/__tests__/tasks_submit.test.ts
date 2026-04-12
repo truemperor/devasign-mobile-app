@@ -192,6 +192,48 @@ describe('POST /api/tasks/:id/submit', () => {
         expect(body.error).toContain('Cannot submit work for bounty with status: open');
     });
 
+    it('should successfuly submit work and update status (URL with hash)', async () => {
+        const mockSubmission = { id: 's-456', prUrl: 'https://github.com/foo/bar/pull/1#issue-123' };
+
+        vi.mocked(db.transaction).mockImplementation(async (cb: any) => {
+            const txMock = {
+                query: {
+                    bounties: {
+                        findFirst: vi.fn().mockResolvedValue({ id: 'b-123', status: 'assigned' }),
+                    },
+                },
+                insert: vi.fn().mockReturnValue({
+                    values: vi.fn().mockReturnValue({
+                        returning: vi.fn().mockResolvedValue([mockSubmission]),
+                    }),
+                }),
+                update: vi.fn().mockReturnValue({
+                    set: vi.fn().mockReturnValue({
+                        where: vi.fn().mockResolvedValue({}),
+                    }),
+                }),
+            };
+            return cb(txMock);
+        });
+
+        const res = await app.request('/api/tasks/b-123/submit', {
+            method: 'POST',
+            body: JSON.stringify({
+                pr_url: 'https://github.com/foo/bar/pull/1#issue-123',
+                supporting_links: ['https://demo.com'],
+                notes: 'Finished the task'
+            }),
+            headers: {
+                Authorization: 'Bearer valid.token',
+                'Content-Type': 'application/json'
+            },
+        });
+
+        expect(res.status).toBe(201);
+        const body = await res.json();
+        expect(body.prUrl).toBe(mockSubmission.prUrl);
+    });
+
     it('should successfuly submit work and update status', async () => {
         const mockSubmission = { id: 's-456', prUrl: 'https://github.com/foo/bar/pull/1' };
 

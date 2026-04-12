@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { Variables } from '../middleware/auth';
+import { githubService } from '../services/github';
 import { db } from '../db';
 import { bounties, submissions, users, extensionRequests } from '../db/schema';
 import { eq } from 'drizzle-orm';
@@ -91,8 +92,6 @@ tasksRouter.get('/', async (c) => {
     });
 });
 
-import { githubService } from '../services/github';
-
 /**
  * POST /api/tasks/:id/submit
  * Submit work for an assigned bounty.
@@ -122,16 +121,18 @@ tasksRouter.post(
             }
 
             // GitHub PR Validation
-            const prRegex = /^https:\/\/github\.com\/([^\/]+)\/([^\/]+)\/pull\/(\d+)\/?$/i;
-            const prMatch = pr_url.match(prRegex);
+            const parsedUrl = new URL(pr_url);
+            const prMatch = parsedUrl.pathname.match(/^\/([^\/]+)\/([^\/]+)\/pull\/(\d+)/i);
 
-            if (!prMatch) {
+            if (parsedUrl.hostname.toLowerCase() !== 'github.com' || !prMatch) {
                 return c.json({ error: 'Invalid GitHub PR URL format' }, 400);
             }
 
             const [, prOwner, prRepo, prNumberStr] = prMatch;
 
             if (
+                !bounty.repoOwner ||
+                !bounty.repoName ||
                 prOwner.toLowerCase() !== bounty.repoOwner.toLowerCase() ||
                 prRepo.toLowerCase() !== bounty.repoName.toLowerCase()
             ) {
